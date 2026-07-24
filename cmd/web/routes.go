@@ -12,7 +12,7 @@ func (app *application) routes() http.Handler {
 
 	mux.HandleFunc("GET /healthz", http.HandlerFunc(healthz))
 
-	mux.HandleFunc("GET /", http.HandlerFunc(app.viewWorkspace))
+	mux.HandleFunc("GET /{$}", http.HandlerFunc(app.viewWorkspace))
 
 	return app.recoverPanic(app.logRequest(mux))
 }
