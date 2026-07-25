@@ -46,7 +46,7 @@ func (app *application) workspaceView(w http.ResponseWriter, r *http.Request) {
 
 func (app *application) workItemPost(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, http.StatusText(http.StatusUnprocessableEntity), http.StatusUnprocessableEntity)
+		app.clientError(w, http.StatusUnprocessableEntity)
 		return
 	}
 
@@ -78,7 +78,7 @@ func (app *application) workItemPost(w http.ResponseWriter, r *http.Request) {
 
 func (app *application) workItemDelete(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		app.serverError(w, r, err)
+		app.clientError(w, http.StatusUnprocessableEntity)
 		return
 	}
 

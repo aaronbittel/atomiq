@@ -26,8 +26,8 @@
             <div class="addWorkItem">
                 <form action="/work-item" method="post">
                     <input type="hidden" name="columnIdx" value={{$index}}>
-                    <input type="text" name="name" id="name" required minlength={1} placeholder="add new work item"
-                        oninvalid="this.setCustomValidity('work item must not be empty')"
+                    <input type="text" name="name" id="name" required minlength={1} placeholder="add new item"
+                        oninvalid="this.setCustomValidity('work item must not be blank')"
                         oninput="this.setCustomValidity('')"
                     >
                     <button type="submit">+</button>

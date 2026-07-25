@@ -47,7 +47,7 @@ func (wm *WorkspaceModel) WorkItemAdd(columnIdx int, workItemName string) error 
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
 
-	if validSliceAccess(columnIdx, len(wm.Workspace.Columns)) {
+	if !validSliceAccess(columnIdx, len(wm.Workspace.Columns)) {
 		return ErrInvalidColumn
 	}
 
@@ -59,7 +59,7 @@ func (wm *WorkspaceModel) WorkItemDelete(columnIdx int, workItemID string) error
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
 
-	if validSliceAccess(columnIdx, len(wm.Workspace.Columns)) {
+	if !validSliceAccess(columnIdx, len(wm.Workspace.Columns)) {
 		return ErrInvalidColumn
 	}
 
@@ -79,5 +79,5 @@ func NewWorkItem(name string) WorkItem {
 }
 
 func validSliceAccess(idx, length int) bool {
-	return idx < 0 || idx >= length
+	return idx >= 0 && idx < length
 }

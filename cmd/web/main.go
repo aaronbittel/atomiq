@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	gob.Register(ColumnErr{})
+	gob.Register(&ColumnErr{})
 }
 
 type application struct {
