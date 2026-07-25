@@ -16,8 +16,8 @@ func init() {
 }
 
 type application struct {
-	wm *model.WorkspaceModel
-	sm *scs.SessionManager
+	workspaceModel *model.WorkspaceModel
+	sessionManager *scs.SessionManager
 
 	logger *slog.Logger
 }
@@ -28,7 +28,7 @@ func main() {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	wm := &model.WorkspaceModel{
+	workspaceModel := &model.WorkspaceModel{
 		Workspace: model.Workspace{
 			Columns: []model.Column{
 				{
@@ -48,9 +48,9 @@ func main() {
 	}
 
 	app := application{
-		wm:     wm,
-		sm:     scs.New(),
-		logger: logger,
+		workspaceModel: workspaceModel,
+		sessionManager: scs.New(),
+		logger:         logger,
 	}
 
 	logger.Info("server starting", "port", *port)

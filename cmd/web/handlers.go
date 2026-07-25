@@ -29,8 +29,8 @@ func (app *application) workspaceView(w http.ResponseWriter, r *http.Request) {
 	}
 	t.Option("missingkey=error")
 
-	data := workspaceRenderView{Ws: app.wm.WorkspaceView()}
-	if columnErr, ok := app.sm.Pop(r.Context(), "columnErr").(*ColumnErr); ok {
+	data := workspaceRenderView{Ws: app.workspaceModel.WorkspaceView()}
+	if columnErr, ok := app.sessionManager.Pop(r.Context(), "columnErr").(*ColumnErr); ok {
 		data.ColumnErr = columnErr
 	}
 
@@ -58,12 +58,12 @@ func (app *application) workItemPost(w http.ResponseWriter, r *http.Request) {
 
 	workItemName := strings.TrimSpace(r.PostForm.Get("name"))
 	if workItemName == "" {
-		app.sm.Put(r.Context(), "columnErr", &ColumnErr{Idx: columnIdx, Msg: "work item must not be blank"})
+		app.sessionManager.Put(r.Context(), "columnErr", &ColumnErr{Idx: columnIdx, Msg: "work item must not be blank"})
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
 
-	if err := app.wm.WorkItemAdd(columnIdx, workItemName); err != nil {
+	if err := app.workspaceModel.WorkItemAdd(columnIdx, workItemName); err != nil {
 		switch {
 		case errors.Is(err, model.ErrInvalidColumn):
 			app.clientError(w, http.StatusUnprocessableEntity)
@@ -94,7 +94,7 @@ func (app *application) workItemDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := app.wm.WorkItemDelete(columnIdx, workItemID); err != nil {
+	if err := app.workspaceModel.WorkItemDelete(columnIdx, workItemID); err != nil {
 		switch {
 		case errors.Is(err, model.ErrInvalidColumn):
 			app.clientError(w, http.StatusUnprocessableEntity)
