@@ -32,12 +32,12 @@
                     >
                     <button type="submit">+</button>
                 </form>
-                {{if eq $.ColumnErr.Idx $index}}
-                <div class="error">
-                    <span>{{$.ColumnErr.Msg}}</span>
-                </div>
-                {{end}}
             </div>
+            {{if and $.ColumnErr (eq $.ColumnErr.Idx $index)}}
+            <div class="error">
+                <span>{{$.ColumnErr.Msg}}</span>
+            </div>
+            {{end}}
         </div>
         {{end}}
     </div>

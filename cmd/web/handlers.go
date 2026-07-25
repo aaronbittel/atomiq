@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -12,7 +13,7 @@ import (
 
 type workspaceRenderView struct {
 	Ws        model.Workspace
-	ColumnErr ColumnErr
+	ColumnErr *ColumnErr
 }
 
 type ColumnErr struct {
@@ -28,8 +29,8 @@ func (app *application) workspaceView(w http.ResponseWriter, r *http.Request) {
 	}
 	t.Option("missingkey=error")
 
-	data := workspaceRenderView{Ws: app.wm.Workspace}
-	if columnErr, ok := app.sm.Pop(r.Context(), "name").(ColumnErr); ok {
+	data := workspaceRenderView{Ws: app.wm.WorkspaceView()}
+	if columnErr, ok := app.sm.Pop(r.Context(), "columnErr").(*ColumnErr); ok {
 		data.ColumnErr = columnErr
 	}
 
@@ -57,13 +58,18 @@ func (app *application) workItemPost(w http.ResponseWriter, r *http.Request) {
 
 	workItemName := strings.TrimSpace(r.PostForm.Get("name"))
 	if workItemName == "" {
-		app.sm.Put(r.Context(), "name", ColumnErr{Idx: columnIdx, Msg: "work item must not be blank"})
+		app.sm.Put(r.Context(), "columnErr", &ColumnErr{Idx: columnIdx, Msg: "work item must not be blank"})
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
 
 	if err := app.wm.WorkItemAdd(columnIdx, workItemName); err != nil {
-		app.serverError(w, r, err)
+		switch {
+		case errors.Is(err, model.ErrInvalidColumn):
+			app.clientError(w, http.StatusUnprocessableEntity)
+		default:
+			app.serverError(w, r, err)
+		}
 		return
 	}
 
@@ -89,7 +95,12 @@ func (app *application) workItemDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := app.wm.WorkItemDelete(columnIdx, workItemID); err != nil {
-		app.clientError(w, http.StatusUnprocessableEntity)
+		switch {
+		case errors.Is(err, model.ErrInvalidColumn):
+			app.clientError(w, http.StatusUnprocessableEntity)
+		default:
+			app.serverError(w, r, err)
+		}
 		return
 	}
 

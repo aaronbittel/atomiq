@@ -26,12 +26,29 @@ type WorkItem struct {
 	Name string
 }
 
+func (wm *WorkspaceModel) WorkspaceView() Workspace {
+	wm.mu.RLock()
+	defer wm.mu.RUnlock()
+
+	columns := make([]Column, len(wm.Workspace.Columns))
+	for i, col := range wm.Workspace.Columns {
+		columns[i] = Column{
+			Name:      col.Name,
+			WorkItems: append([]WorkItem(nil), col.WorkItems...),
+		}
+	}
+
+	return Workspace{Columns: columns}
+}
+
+var ErrInvalidColumn = errors.New("invalid column")
+
 func (wm *WorkspaceModel) WorkItemAdd(columnIdx int, workItemName string) error {
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
 
-	if columnIdx < 0 || columnIdx >= len(wm.Workspace.Columns) {
-		return errors.New("illegal column access")
+	if validSliceAccess(columnIdx, len(wm.Workspace.Columns)) {
+		return ErrInvalidColumn
 	}
 
 	wm.Workspace.Columns[columnIdx].WorkItems = append(wm.Workspace.Columns[columnIdx].WorkItems, NewWorkItem(workItemName))
@@ -42,8 +59,8 @@ func (wm *WorkspaceModel) WorkItemDelete(columnIdx int, workItemID string) error
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
 
-	if columnIdx < 0 || columnIdx >= len(wm.Workspace.Columns) {
-		return errors.New("illegal column access")
+	if validSliceAccess(columnIdx, len(wm.Workspace.Columns)) {
+		return ErrInvalidColumn
 	}
 
 	column := &wm.Workspace.Columns[columnIdx]
@@ -59,4 +76,8 @@ func NewWorkItem(name string) WorkItem {
 		ID:   rand.Text()[:8],
 		Name: name,
 	}
+}
+
+func validSliceAccess(idx, length int) bool {
+	return idx < 0 || idx >= length
 }
