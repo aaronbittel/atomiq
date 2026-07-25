@@ -5,6 +5,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
 	"strings"
@@ -15,62 +16,145 @@ import (
 )
 
 func TestWorkItemPost(t *testing.T) {
-	t.Chdir("../..")
+	t.Run("valid work item", func(t *testing.T) {
+		t.Chdir("../..")
 
-	workspaceModel := &model.WorkspaceModel{
-		Workspace: model.Workspace{
-			Columns: []model.Column{
-				{Name: "Backlog"},
+		workspaceModel := &model.WorkspaceModel{
+			Workspace: model.Workspace{
+				Columns: []model.Column{
+					{Name: "Backlog"},
+				},
 			},
-		},
-	}
+		}
 
-	app := application{
-		workspaceModel: workspaceModel,
-		logger:         slog.New(slog.DiscardHandler),
-		sessionManager: scs.New(),
-	}
+		app := application{
+			workspaceModel: workspaceModel,
+			logger:         slog.New(slog.DiscardHandler),
+			sessionManager: scs.New(),
+		}
 
-	s := httptest.NewServer(app.routes())
-	defer s.Close()
+		s := httptest.NewServer(app.routes())
+		defer s.Close()
 
-	form := url.Values{}
-	form.Set("columnIdx", "0")
-	form.Set("name", "New Work Item")
+		form := url.Values{}
+		form.Set("columnIdx", "0")
+		form.Set("name", "New Work Item")
 
-	s.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		return http.ErrUseLastResponse
-	}
+		s.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		}
 
-	resp, err := s.Client().Post(s.URL+"/work-item", "application/x-www-form-urlencoded", strings.NewReader(form.Encode()))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer resp.Body.Close()
+		resp, err := s.Client().Post(s.URL+"/work-item", "application/x-www-form-urlencoded", strings.NewReader(form.Encode()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusSeeOther {
-		t.Fatalf("expected %q, got %q", http.StatusText(http.StatusSeeOther), http.StatusText(resp.StatusCode))
-	}
+		if resp.StatusCode != http.StatusSeeOther {
+			t.Fatalf("expected %q, got %q", http.StatusText(http.StatusSeeOther), http.StatusText(resp.StatusCode))
+		}
 
-	resp, err = s.Client().Get(s.URL + "/")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer resp.Body.Close()
+		resp, err = s.Client().Get(s.URL + "/")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("expected %q, got %q", http.StatusText(http.StatusOK), http.StatusText(resp.StatusCode))
-	}
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("expected %q, got %q", http.StatusText(http.StatusOK), http.StatusText(resp.StatusCode))
+		}
 
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got := string(data)
+		data, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := string(data)
 
-	if !strings.Contains(got, "New Work Item") {
-		t.Errorf("expected \"New Work Item\" in html")
-	}
+		if !strings.Contains(got, "New Work Item") {
+			t.Errorf("expected \"New Work Item\" in html")
+		}
+	})
+
+	t.Run("blank work item name", func(t *testing.T) {
+		t.Chdir("../..")
+
+		workspaceModel := &model.WorkspaceModel{
+			Workspace: model.Workspace{
+				Columns: []model.Column{
+					{Name: "Backlog"},
+				},
+			},
+		}
+
+		app := application{
+			workspaceModel: workspaceModel,
+			logger:         slog.New(slog.DiscardHandler),
+			sessionManager: scs.New(),
+		}
+
+		s := httptest.NewServer(app.routes())
+		defer s.Close()
+
+		form := url.Values{}
+		form.Set("columnIdx", "0")
+		form.Set("name", "   ")
+
+		jar, err := cookiejar.New(nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		s.Client().Jar = jar
+
+		s.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		}
+
+		resp, err := s.Client().Post(s.URL+"/work-item", "application/x-www-form-urlencoded", strings.NewReader(form.Encode()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusSeeOther {
+			t.Fatalf("expected %q, got %q", http.StatusText(http.StatusSeeOther), http.StatusText(resp.StatusCode))
+		}
+
+		if resp.Header.Get("Location") != "/" {
+			t.Fatalf("expected location header to be \"\\\", got %q", resp.Header.Get("Location"))
+		}
+
+		resp, err = s.Client().Get(s.URL + "/")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("expected %q, got %q", http.StatusText(http.StatusOK), http.StatusText(resp.StatusCode))
+		}
+
+		data, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := string(data)
+
+		if !strings.Contains(got, "<h2>Backlog</h2>") {
+			t.Fatal("expected \"<h2>Backlog</h2>\" column to exist")
+		}
+
+		if strings.Contains(got, "class=\"work-item-box\"") {
+			t.Fatal("unexpected work item div")
+		}
+
+		if !strings.Contains(got, "div class=\"error\"") {
+			t.Error("expected div class=\"error\"")
+		}
+
+		if !strings.Contains(got, "<span>work item must not be blank</span>") {
+			t.Error("expected \"<span>work item must not be blank</span>\"")
+		}
+	})
 }
 
 func TestWorkItemDelete(t *testing.T) {
@@ -94,7 +178,7 @@ func TestWorkItemDelete(t *testing.T) {
 
 	app := application{
 		workspaceModel: workspaceModel,
-		logger:         slog.New(slog.NewTextHandler(t.Output(), nil)),
+		logger:         slog.New(slog.DiscardHandler),
 		sessionManager: scs.New(),
 	}
 
