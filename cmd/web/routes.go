@@ -12,7 +12,8 @@ func (app *application) routes() http.Handler {
 
 	mux.HandleFunc("GET /healthz", http.HandlerFunc(healthz))
 
-	mux.HandleFunc("GET /{$}", http.HandlerFunc(app.viewWorkspace))
+	mux.HandleFunc("GET /{$}", http.HandlerFunc(app.workspaceView))
+	mux.HandleFunc("POST /work-item", http.HandlerFunc(app.workItemPost))
 
-	return app.recoverPanic(app.logRequest(mux))
+	return app.recoverPanic(app.logRequest(app.sm.LoadAndSave(mux)))
 }

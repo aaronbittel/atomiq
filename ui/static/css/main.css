@@ -13,9 +13,9 @@ html, body {
 .workspace {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 2rem;
+    gap: 3rem;
     align-start: start;
-    margin: 2rem;
+    margin: 5rem;
 }
 
 .column {
@@ -33,4 +33,31 @@ html, body {
     padding: 1rem;
     border: 1px solid #ccc;
     border-radius: 0.5rem;
+}
+
+.addWorkItem form {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.addWorkItem input[type="text"] {
+    flex: 1;
+    min-width: 0;
+    margin: 5px;
+    padding: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 0.5rem;
+}
+
+.addWorkItem button {
+    flex: 0 0 auto;
+    margin: 5px;
+    padding: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 0.5rem;
+}
+
+.error {
+    color: #C0392B;
+    font-weight: bold;
 }

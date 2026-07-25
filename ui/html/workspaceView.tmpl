@@ -8,7 +8,7 @@
 </head>
 <body>
     <div class="workspace">
-        {{range .Columns}}
+        {{range $index, $column := .Ws.Columns}}
         <div class="column">
             <h2>{{.Name}}</h2>
             {{range .WorkItems}}
@@ -16,6 +16,21 @@
                 <p>{{.}}</p>
             </div>
             {{end}}
+            <div class="addWorkItem">
+                <form action="/work-item" method="post">
+                    <input type="hidden" name="columnIdx" value={{$index}}>
+                    <input type="text" name="name" id="name" required minlength={1} placeholder="add new work item"
+                        oninvalid="this.setCustomValidity('work item must not be empty')"
+                        oninput="this.setCustomValidity('')"
+                    >
+                    <button type="submit">+</button>
+                </form>
+                {{if eq $.ColumnErr.Idx $index}}
+                <div class="error">
+                    <span>{{$.ColumnErr.Msg}}</span>
+                </div>
+                {{end}}
+            </div>
         </div>
         {{end}}
     </div>
