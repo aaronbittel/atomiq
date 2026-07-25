@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/aaronbittel/atomiq/internal/model"
@@ -50,12 +49,7 @@ func (app *application) workItemPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	columnIdxStr := r.PostForm.Get("columnIdx")
-	if columnIdxStr == "" {
-		app.clientError(w, http.StatusUnprocessableEntity)
-		return
-	}
-	columnIdx, err := strconv.Atoi(columnIdxStr)
+	columnIdx, err := parseInt(r.PostForm.Get("columnIdx"))
 	if err != nil {
 		app.clientError(w, http.StatusUnprocessableEntity)
 		return
@@ -68,8 +62,34 @@ func (app *application) workItemPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := app.wm.AddWorkItem(columnIdx, workItemName); err != nil {
+	if err := app.wm.WorkItemAdd(columnIdx, workItemName); err != nil {
 		app.serverError(w, r, err)
+		return
+	}
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func (app *application) workItemDelete(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	workItemID := r.PathValue("id")
+	if len(workItemID) != 8 {
+		app.clientError(w, http.StatusUnprocessableEntity)
+		return
+	}
+
+	columnIdx, err := parseInt(r.PostForm.Get("columnIdx"))
+	if err != nil {
+		app.clientError(w, http.StatusUnprocessableEntity)
+		return
+	}
+
+	if err := app.wm.WorkItemDelete(columnIdx, workItemID); err != nil {
+		app.clientError(w, http.StatusUnprocessableEntity)
 		return
 	}
 

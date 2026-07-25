@@ -14,6 +14,7 @@ func (app *application) routes() http.Handler {
 
 	mux.HandleFunc("GET /{$}", http.HandlerFunc(app.workspaceView))
 	mux.HandleFunc("POST /work-item", http.HandlerFunc(app.workItemPost))
+	mux.HandleFunc("DELETE /work-item/{id}", http.HandlerFunc(app.workItemDelete))
 
-	return app.recoverPanic(app.logRequest(app.sm.LoadAndSave(mux)))
+	return app.recoverPanic(app.methodOverride(app.logRequest(app.sm.LoadAndSave(mux))))
 }

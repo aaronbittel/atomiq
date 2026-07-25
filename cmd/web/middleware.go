@@ -36,3 +36,19 @@ func (app *application) recoverPanic(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
+func (app *application) methodOverride(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			if err := r.ParseForm(); err != nil {
+				app.serverError(w, r, err)
+				return
+			}
+			if m := r.PostForm.Get("_method"); m == "DELETE" {
+				r.Method = http.MethodDelete
+			}
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}

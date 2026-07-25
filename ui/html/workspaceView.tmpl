@@ -12,8 +12,15 @@
         <div class="column">
             <h2>{{.Name}}</h2>
             {{range .WorkItems}}
-            <div class="work-item">
-                <p>{{.}}</p>
+            <div class="work-item-box">
+                <div class="work-item">
+                    <p>{{.Name}}</p>
+                </div>
+                <form action="/work-item/{{.ID}}" method="post">
+                    <input type="hidden" name="columnIdx" value={{$index}}>
+                    <input type="hidden" name="_method" value="DELETE">
+                    <button type="submit" class="error">X</button>
+                </form>
             </div>
             {{end}}
             <div class="addWorkItem">

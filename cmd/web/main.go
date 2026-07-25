@@ -33,15 +33,15 @@ func main() {
 			Columns: []model.Column{
 				{
 					Name:      "Backlog",
-					WorkItems: []string{"Some Item", "Another Item"},
+					WorkItems: []model.WorkItem{model.NewWorkItem("Some Item"), model.NewWorkItem("Another Item")},
 				},
 				{
 					Name:      "In Progress",
-					WorkItems: []string{"Cool Stuff", "Atomiq", "Hyped"},
+					WorkItems: []model.WorkItem{model.NewWorkItem("Cool Stuff"), model.NewWorkItem("Atomiq"), model.NewWorkItem("Hyped")},
 				},
 				{
 					Name:      "Done",
-					WorkItems: []string{"Ofc something", "this is also done"},
+					WorkItems: []model.WorkItem{model.NewWorkItem("Ofc something"), model.NewWorkItem("this is also done")},
 				},
 			},
 		},
