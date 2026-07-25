@@ -3,7 +3,6 @@ package main
 import (
 	"net/http"
 	"net/url"
-	"strings"
 	"testing"
 
 	"github.com/aaronbittel/atomiq/internal/model"
@@ -35,9 +34,7 @@ func TestWorkItemPost(t *testing.T) {
 		resp = ts.get(t, "/")
 		assertStatusCode(t, http.StatusOK, resp.StatusCode)
 
-		if !strings.Contains(resp.Body, "New Work Item") {
-			t.Errorf("expected \"New Work Item\" in html")
-		}
+		assertContains(t, resp.Body, "New Work Item")
 	})
 
 	t.Run("blank work item name", func(t *testing.T) {
@@ -65,62 +62,112 @@ func TestWorkItemPost(t *testing.T) {
 		resp = ts.get(t, "/")
 		assertStatusCode(t, http.StatusOK, resp.StatusCode)
 
-		if !strings.Contains(resp.Body, "<h2>Backlog</h2>") {
-			t.Fatal("expected \"<h2>Backlog</h2>\" column to exist")
-		}
+		assertContains(t, resp.Body, "Backlog")
+		assertContains(t, resp.Body, "div class=\"error\"")
+		assertContains(t, resp.Body, "<span>work item must not be blank</span>")
+		assertNotContains(t, resp.Body, "class=\"work-item-box\"")
 
-		if strings.Contains(resp.Body, "class=\"work-item-box\"") {
-			t.Fatal("unexpected work item div")
-		}
+	})
 
-		if !strings.Contains(resp.Body, "div class=\"error\"") {
-			t.Error("expected div class=\"error\"")
-		}
+	t.Run("invalid columnIdx access", func(t *testing.T) {
+		app := newTestApplication(t, &model.WorkspaceModel{})
+		ts := newTestServer(t, app.routes())
+		defer ts.Close()
 
-		if !strings.Contains(resp.Body, "<span>work item must not be blank</span>") {
-			t.Error("expected \"<span>work item must not be blank</span>\"")
-		}
+		form := url.Values{}
+		form.Set("columnIdx", "1")
+		form.Set("name", "New Work Item")
+
+		resp := ts.postForm(t, "/work-item", form)
+		assertStatusCode(t, http.StatusUnprocessableEntity, resp.StatusCode)
+	})
+
+	t.Run("columnIdx not an integer", func(t *testing.T) {
+		app := newTestApplication(t, &model.WorkspaceModel{})
+		ts := newTestServer(t, app.routes())
+		defer ts.Close()
+
+		form := url.Values{}
+		form.Set("columnIdx", "abc")
+		form.Set("name", "New Work Item")
+
+		resp := ts.postForm(t, "/work-item", form)
+		assertStatusCode(t, http.StatusUnprocessableEntity, resp.StatusCode)
 	})
 }
 
 func TestWorkItemDelete(t *testing.T) {
-	t.Chdir("../..")
+	t.Run("valid work item deletion", func(t *testing.T) {
+		t.Chdir("../..")
 
-	workItem1 := model.NewWorkItem("Todo 1")
+		workItem1 := model.NewWorkItem("Todo 1")
 
-	workspaceModel := &model.WorkspaceModel{
-		Workspace: model.Workspace{
-			Columns: []model.Column{
-				{
-					Name: "Backlog",
-					WorkItems: []model.WorkItem{
-						workItem1,
-						model.NewWorkItem("Todo 2"),
+		workspaceModel := &model.WorkspaceModel{
+			Workspace: model.Workspace{
+				Columns: []model.Column{
+					{
+						Name: "Backlog",
+						WorkItems: []model.WorkItem{
+							workItem1,
+							model.NewWorkItem("Todo 2"),
+						},
 					},
 				},
 			},
+		}
+
+		app := newTestApplication(t, workspaceModel)
+		ts := newTestServer(t, app.routes())
+		defer ts.Close()
+
+		form := url.Values{}
+		form.Set("columnIdx", "0")
+		form.Set("_method", "DELETE")
+
+		resp := ts.postForm(t, "/work-item/"+workItem1.ID, form)
+		assertRedirect(t, resp, http.StatusSeeOther, "/")
+
+		resp = ts.get(t, "/")
+		assertStatusCode(t, http.StatusOK, resp.StatusCode)
+
+		assertNotContains(t, resp.Body, "Todo 1")
+		assertContains(t, resp.Body, "Todo 2")
+	})
+
+	tests := []struct {
+		name      string
+		columnIdx string
+		url       string
+	}{
+		{
+			name:      "path id too short",
+			columnIdx: "0",
+			url:       "/work-item/short",
+		},
+		{
+			name:      "columnIdx not a number",
+			columnIdx: "abc",
+			url:       "/work-item/12345678",
+		},
+		{
+			name:      "invalid columnIdx access",
+			columnIdx: "1",
+			url:       "/work-item/12345678",
 		},
 	}
 
-	app := newTestApplication(t, workspaceModel)
-	ts := newTestServer(t, app.routes())
-	defer ts.Close()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app := newTestApplication(t, &model.WorkspaceModel{})
+			ts := newTestServer(t, app.routes())
+			defer ts.Close()
 
-	form := url.Values{}
-	form.Set("columnIdx", "0")
-	form.Set("_method", "DELETE")
+			form := url.Values{}
+			form.Set("columnIdx", tt.columnIdx)
+			form.Set("_method", "DELETE")
 
-	resp := ts.postForm(t, "/work-item/"+workItem1.ID, form)
-	assertRedirect(t, resp, http.StatusSeeOther, "/")
-
-	resp = ts.get(t, "/")
-	assertStatusCode(t, http.StatusOK, resp.StatusCode)
-
-	if strings.Contains(resp.Body, "Todo 1") {
-		t.Error("Todo 1 should have been deleted")
-	}
-
-	if !strings.Contains(resp.Body, "Todo 2") {
-		t.Errorf("expected \"Todo 2\" to still exists")
+			resp := ts.postForm(t, tt.url, form)
+			assertStatusCode(t, http.StatusUnprocessableEntity, resp.StatusCode)
+		})
 	}
 }

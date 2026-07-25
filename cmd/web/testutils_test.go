@@ -16,6 +16,8 @@ import (
 )
 
 func newTestApplication(t *testing.T, workspaceModel *model.WorkspaceModel) *application {
+	t.Helper()
+
 	return &application{
 		workspaceModel: workspaceModel,
 		logger:         slog.New(slog.DiscardHandler),
@@ -28,6 +30,8 @@ type testServer struct {
 }
 
 func newTestServer(t *testing.T, handler http.Handler) *testServer {
+	t.Helper()
+
 	s := httptest.NewServer(handler)
 
 	s.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error {
@@ -51,6 +55,8 @@ type testResponse struct {
 }
 
 func (ts *testServer) get(t *testing.T, url string) testResponse {
+	t.Helper()
+
 	req, err := http.NewRequest(http.MethodGet, ts.URL+url, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -60,6 +66,8 @@ func (ts *testServer) get(t *testing.T, url string) testResponse {
 }
 
 func (ts *testServer) postForm(t *testing.T, url string, form url.Values) testResponse {
+	t.Helper()
+
 	req, err := http.NewRequest(http.MethodPost, ts.URL+url, strings.NewReader(form.Encode()))
 	if err != nil {
 		t.Fatal(err)
@@ -71,12 +79,16 @@ func (ts *testServer) postForm(t *testing.T, url string, form url.Values) testRe
 }
 
 func assertStatusCode(t *testing.T, want, got int) {
+	t.Helper()
+
 	if want != got {
 		t.Fatalf("expected %q, got %q", http.StatusText(want), http.StatusText(got))
 	}
 }
 
 func assertRedirect(t *testing.T, resp testResponse, wantCode int, wantLocation string) {
+	t.Helper()
+
 	assertStatusCode(t, wantCode, resp.StatusCode)
 
 	gotLocation := resp.Header.Get("Location")
@@ -86,6 +98,8 @@ func assertRedirect(t *testing.T, resp testResponse, wantCode int, wantLocation 
 }
 
 func (ts *testServer) do(t *testing.T, req *http.Request) testResponse {
+	t.Helper()
+
 	resp, err := ts.Client().Do(req)
 	if err != nil {
 		t.Fatal(err)
@@ -102,5 +116,21 @@ func (ts *testServer) do(t *testing.T, req *http.Request) testResponse {
 		Cookies:    resp.Cookies(),
 		Body:       string(bytes.TrimSpace(body)),
 		StatusCode: resp.StatusCode,
+	}
+}
+
+func assertContains(t *testing.T, body, want string) {
+	t.Helper()
+
+	if !strings.Contains(body, want) {
+		t.Errorf("expected response body to contain %q", want)
+	}
+}
+
+func assertNotContains(t *testing.T, body, unwanted string) {
+	t.Helper()
+
+	if strings.Contains(body, unwanted) {
+		t.Errorf("expected response body not to contain %q", unwanted)
 	}
 }
