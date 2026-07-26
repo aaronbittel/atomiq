@@ -44,8 +44,16 @@ func (app *application) methodOverride(next http.Handler) http.Handler {
 				app.clientError(w, http.StatusUnprocessableEntity)
 				return
 			}
-			if m := r.PostForm.Get("_method"); m == "DELETE" {
-				r.Method = http.MethodDelete
+			if m := r.PostForm.Get("_method"); m != "" {
+				switch m {
+				case "DELETE":
+					r.Method = http.MethodDelete
+				case "PATCH":
+					r.Method = http.MethodPatch
+				default:
+					app.clientError(w, http.StatusUnprocessableEntity)
+					return
+				}
 			}
 		}
 

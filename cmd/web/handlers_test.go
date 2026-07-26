@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log/slog"
 	"net/http"
 	"net/url"
 	"testing"
@@ -21,6 +22,7 @@ func TestWorkItemPost(t *testing.T) {
 		}
 
 		app := newTestApplication(t, workspaceModel)
+		app.logger = slog.New(slog.NewTextHandler(t.Output(), nil))
 		ts := newTestServer(t, app.routes())
 		defer ts.Close()
 

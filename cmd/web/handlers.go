@@ -107,6 +107,59 @@ func (app *application) workItemDelete(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
+func (app *application) parseMoveFormData(r *http.Request) (model.WorkItemPosition, model.MoveDirection, error) {
+	if err := r.ParseForm(); err != nil {
+		return model.WorkItemPosition{}, "", err
+	}
+
+	columnIdx, err := parseInt(r.PostForm.Get("fromColumnIdx"))
+	if err != nil {
+		return model.WorkItemPosition{}, "", err
+	}
+
+	itemIdx, err := parseInt(r.PostForm.Get("fromItemIdx"))
+	if err != nil {
+		return model.WorkItemPosition{}, "", err
+	}
+
+	moveDir, err := model.ParseMoveDirection(r.PostForm.Get("direction"))
+	if err != nil {
+		return model.WorkItemPosition{}, "", err
+	}
+
+	wip := model.WorkItemPosition{ColumnIdx: columnIdx, ItemIdx: itemIdx}
+	return wip, moveDir, nil
+}
+
+// Do I need the mutex lock on the model for the duration of this handler?
+func (app *application) workItemMove(w http.ResponseWriter, r *http.Request) {
+	srcPos, direction, err := app.parseMoveFormData(r)
+	if err != nil {
+		app.clientError(w, http.StatusUnprocessableEntity)
+		return
+	}
+
+	workItemID := r.PathValue("id")
+	if len(workItemID) != 8 {
+		app.clientError(w, http.StatusUnprocessableEntity)
+		return
+	}
+
+	if err := app.workspaceModel.WorkItemMoveDirection(workItemID, srcPos, direction); err != nil {
+		switch {
+		case errors.Is(err, model.ErrInvalidPosition) || errors.Is(err, model.ErrInvalidMoveDirection):
+			app.clientError(w, http.StatusUnprocessableEntity)
+		case errors.Is(err, model.ErrItemIDMismatch):
+			app.clientError(w, http.StatusConflict)
+		default:
+			app.serverError(w, r, err)
+		}
+		return
+	}
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
 func healthz(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprintln(w, `{"status": "OK"}`)
