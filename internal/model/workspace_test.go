@@ -527,3 +527,53 @@ func TestWorkItemDelete(t *testing.T) {
 		}
 	})
 }
+
+func TestWorkItemAdd(t *testing.T) {
+	t.Run("valid", func(t *testing.T) {
+		workspace := workspace(column("Column", A))
+		wm := model.NewWorkspaceModel(workspace)
+
+		if err := wm.WorkItemAdd(0, "  New item  "); err != nil {
+			t.Fatal(err)
+		}
+
+		got := wm.WorkspaceView()
+		items := got.Columns[0].WorkItems
+
+		if len(items) != 2 {
+			t.Fatalf("expected 2 work items, got %d", len(items))
+		}
+
+		if items[1].Name != "New item" {
+			t.Fatalf("expected trimmed name %q, got %q", "New item", items[1].Name)
+		}
+
+		if len(items[1].ID) != 8 {
+			t.Fatal("invalid work item ID")
+		}
+	})
+
+	t.Run("blank name", func(t *testing.T) {
+		initial := workspace(column("Column", A))
+		wm := model.NewWorkspaceModel(initial)
+
+		err := wm.WorkItemAdd(0, "   ")
+		if !errors.Is(err, model.ErrInvalidWorkItemName) {
+			t.Fatalf("expected error %v, got %v", model.ErrInvalidWorkItemName, err)
+		}
+
+		got := wm.WorkspaceView()
+		if diff := cmp.Diff(initial, got); diff != "" {
+			t.Errorf("workspace mismatch (-want +got):\n%s", diff)
+		}
+	})
+
+	t.Run("invalid column", func(t *testing.T) {
+		wm := model.NewWorkspaceModel(workspace(column("Column", A)))
+
+		err := wm.WorkItemAdd(1, "New item")
+		if !errors.Is(err, model.ErrInvalidColumn) {
+			t.Fatalf("expected error %v, got %v", model.ErrInvalidColumn, err)
+		}
+	})
+}

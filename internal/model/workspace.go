@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"sync"
 )
 
@@ -74,17 +75,23 @@ func (wm *WorkspaceModel) WorkspaceView() Workspace {
 var (
 	ErrInvalidColumn        = errors.New("invalid column")
 	ErrInvalidPosition      = errors.New("invalid work item position")
+	ErrInvalidWorkItemName  = errors.New("invalid work item name")
 	ErrItemIDMismatch       = errors.New("item ID mismatch")
 	ErrInvalidMoveDirection = errors.New("invalid move direction")
 )
 
-// WorkItemAdd appends a new item to the selected column.
+// WorkItemAdd trims and appends a new item to the selected column.
 func (wm *WorkspaceModel) WorkItemAdd(columnIdx int, workItemName string) error {
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
 
 	if !validSliceAccess(columnIdx, len(wm.workspace.Columns)) {
 		return ErrInvalidColumn
+	}
+
+	workItemName = strings.TrimSpace(workItemName)
+	if workItemName == "" {
+		return ErrInvalidWorkItemName
 	}
 
 	wm.workspace.Columns[columnIdx].WorkItems = append(wm.workspace.Columns[columnIdx].WorkItems, NewWorkItem(workItemName))
