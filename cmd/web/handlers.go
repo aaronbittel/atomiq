@@ -100,8 +100,8 @@ func (app *application) workItemDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	workItemID := r.PathValue("id")
-	if len(workItemID) != 8 {
+	itemID := r.PathValue("id")
+	if len(itemID) != 8 {
 		app.clientError(w, http.StatusUnprocessableEntity)
 		return
 	}
@@ -112,10 +112,20 @@ func (app *application) workItemDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := app.workspaceModel.WorkItemDelete(columnIdx, workItemID); err != nil {
+	itemIdx, err := parseInt(r.PostForm.Get("itemIdx"))
+	if err != nil {
+		app.clientError(w, http.StatusUnprocessableEntity)
+		return
+	}
+
+	pos := model.WorkItemPosition{ColumnIdx: columnIdx, ItemIdx: itemIdx}
+
+	if err := app.workspaceModel.WorkItemDelete(itemID, pos); err != nil {
 		switch {
-		case errors.Is(err, model.ErrInvalidColumn):
+		case errors.Is(err, model.ErrInvalidPosition):
 			app.clientError(w, http.StatusUnprocessableEntity)
+		case errors.Is(err, model.ErrItemIDMismatch):
+			app.clientError(w, http.StatusConflict)
 		default:
 			app.serverError(w, r, err)
 		}

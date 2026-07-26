@@ -123,8 +123,9 @@ func TestWorkItemDelete(t *testing.T) {
 		defer ts.Close()
 
 		form := url.Values{}
-		form.Set("columnIdx", "0")
 		form.Set("_method", "DELETE")
+		form.Set("columnIdx", "0")
+		form.Set("itemIdx", "0")
 
 		resp := ts.postForm(t, "/work-item/"+workItem1.ID, form)
 		assertRedirect(t, resp, http.StatusSeeOther, "/")
@@ -172,4 +173,75 @@ func TestWorkItemDelete(t *testing.T) {
 			assertStatusCode(t, http.StatusUnprocessableEntity, resp.StatusCode)
 		})
 	}
+
+	t.Run("invalid", func(t *testing.T) {
+		item := model.NewWorkItem("Item")
+
+		makeInvalid := func(id string) string {
+			b := []byte(id)
+			if b[0] == 'A' {
+				b[0] = 'B'
+			} else {
+				b[0] = 'A'
+			}
+			return string(b)
+		}
+
+		tests := []struct {
+			name      string
+			workspace model.Workspace
+			itemID    string
+			columnIdx string
+			itemIdx   string
+			wantCode  int
+		}{
+			{
+				name: "position",
+				workspace: model.Workspace{
+					Columns: []model.Column{
+						{
+							Name:      "Backlog",
+							WorkItems: []model.WorkItem{item},
+						},
+					},
+				},
+				itemID:    item.ID,
+				columnIdx: "1",
+				itemIdx:   "0",
+				wantCode:  http.StatusUnprocessableEntity,
+			},
+			{
+				name: "item id mismatch",
+				workspace: model.Workspace{
+					Columns: []model.Column{
+						{
+							Name:      "Backlog",
+							WorkItems: []model.WorkItem{item},
+						},
+					},
+				},
+				itemID:    makeInvalid(item.ID),
+				columnIdx: "0",
+				itemIdx:   "0",
+				wantCode:  http.StatusConflict,
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				app := newTestApplication(t, model.NewWorkspaceModel(tt.workspace))
+				ts := newTestServer(t, app.routes())
+				defer ts.Close()
+
+				form := url.Values{}
+				form.Set("_method", "DELETE")
+				form.Set("columnIdx", tt.columnIdx)
+				form.Set("itemIdx", tt.itemIdx)
+
+				resp := ts.postForm(t, "/work-item/"+tt.itemID, form)
+
+				assertStatusCode(t, tt.wantCode, resp.StatusCode)
+			})
+		}
+	})
 }

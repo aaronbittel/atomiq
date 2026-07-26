@@ -91,19 +91,31 @@ func (wm *WorkspaceModel) WorkItemAdd(columnIdx int, workItemName string) error 
 	return nil
 }
 
-// WorkItemDelete removes all items with workItemID from the selected column.
-func (wm *WorkspaceModel) WorkItemDelete(columnIdx int, workItemID string) error {
+// WorkItemDelete removes the item at pos.
+//
+// The position must point at an existing item whose ID matches itemID. Invalid
+// positions return ErrInvalidPosition; stale positions that point at a different
+// item return ErrItemIDMismatch.
+func (wm *WorkspaceModel) WorkItemDelete(itemID string, pos WorkItemPosition) error {
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
 
-	if !validSliceAccess(columnIdx, len(wm.workspace.Columns)) {
-		return ErrInvalidColumn
+	columns := wm.workspace.Columns
+	if !validSliceAccess(pos.ColumnIdx, len(columns)) {
+		return fmt.Errorf("%w: column index out of bounds", ErrInvalidPosition)
+	}
+	items := columns[pos.ColumnIdx].WorkItems
+	if !validSliceAccess(pos.ItemIdx, len(items)) {
+		return fmt.Errorf("%w: item index out of bounds", ErrInvalidPosition)
 	}
 
-	column := &wm.workspace.Columns[columnIdx]
-	column.WorkItems = slices.DeleteFunc(column.WorkItems, func(wi WorkItem) bool {
-		return wi.ID == workItemID
-	})
+	item := items[pos.ItemIdx]
+	if item.ID != itemID {
+		return ErrItemIDMismatch
+	}
+
+	items = slices.Delete(items, pos.ItemIdx, pos.ItemIdx+1)
+	wm.workspace.Columns[pos.ColumnIdx].WorkItems = items
 
 	return nil
 }
