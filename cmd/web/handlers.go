@@ -24,7 +24,7 @@ var moveDirectionViews = []moveDirectionView{
 }
 
 type workspaceRenderView struct {
-	Ws        model.Workspace
+	Ws        model.WorkspaceView
 	ColumnErr *ColumnErr
 
 	MoveDirections []moveDirectionView
@@ -44,7 +44,7 @@ func (app *application) workspaceView(w http.ResponseWriter, r *http.Request) {
 	t.Option("missingkey=error")
 
 	data := workspaceRenderView{
-		Ws:             app.workspaceModel.WorkspaceView(),
+		Ws:             app.workspaceModel.CurrentWorkspaceView(),
 		MoveDirections: moveDirectionViews,
 	}
 

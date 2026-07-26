@@ -18,7 +18,7 @@ type WorkspaceModel struct {
 	workspace Workspace
 }
 
-// Workspace is the board shown by the application.
+// Workspace contains the columns and work items in one work context.
 type Workspace struct {
 	Columns []Column
 }
@@ -29,7 +29,7 @@ type Column struct {
 	WorkItems []WorkItem
 }
 
-// WorkItem is one task card in a column.
+// WorkItem is one unit of work in a column.
 type WorkItem struct {
 	ID   string
 	Name string
@@ -57,22 +57,25 @@ func NewWorkspaceModel(workspace Workspace) *WorkspaceModel {
 	}
 }
 
-// WorkspaceView returns a snapshot of the workspace.
+// CurrentWorkspaceView returns a snapshot of the current workspace.
 // The returned slices do not share backing arrays with the model, so callers
 // can render or inspect the snapshot without holding the model lock.
-func (wm *WorkspaceModel) WorkspaceView() Workspace {
+func (wm *WorkspaceModel) CurrentWorkspaceView() WorkspaceView {
 	wm.mu.RLock()
 	defer wm.mu.RUnlock()
 
-	columns := make([]Column, len(wm.workspace.Columns))
+	columns := make([]ColumnView, len(wm.workspace.Columns))
 	for i, col := range wm.workspace.Columns {
-		columns[i] = Column{
-			Name:      col.Name,
-			WorkItems: append([]WorkItem(nil), col.WorkItems...),
+		columns[i].Name = col.Name
+		for _, item := range col.WorkItems {
+			columns[i].WorkItems = append(columns[i].WorkItems, WorkItemView{
+				ID:   item.ID,
+				Name: item.Name,
+			})
 		}
 	}
 
-	return Workspace{Columns: columns}
+	return WorkspaceView{Columns: columns}
 }
 
 var (

@@ -21,13 +21,13 @@ func TestWorkItemMoveDirection(t *testing.T) {
 				workspace := workspace(column("Column", A))
 				wm := model.NewWorkspaceModel(workspace)
 
-				want := cloneWorkspace(workspace)
+				want := workspaceView(columnView("Column", itemView(A)))
 
 				if err := wm.WorkItemMoveDirection("1", model.WorkItemPosition{}, dir); err != nil {
 					t.Fatal(err)
 				}
 
-				got := wm.WorkspaceView()
+				got := wm.CurrentWorkspaceView()
 
 				if diff := cmp.Diff(want, got); diff != "" {
 					t.Errorf("workspace mismatch (-want +got):\n%s", diff)
@@ -43,7 +43,7 @@ func TestWorkItemMoveDirection(t *testing.T) {
 			itemID    string
 			from      model.WorkItemPosition
 			direction model.MoveDirection
-			want      model.Workspace
+			want      model.WorkspaceView
 		}{
 			{
 				name: "up",
@@ -53,8 +53,8 @@ func TestWorkItemMoveDirection(t *testing.T) {
 				itemID:    B.ID,
 				from:      model.WorkItemPosition{ColumnIdx: 0, ItemIdx: 1},
 				direction: model.DirectionUp,
-				want: workspace(
-					column("Column", B, A),
+				want: workspaceView(
+					columnView("Column", itemView(B), itemView(A)),
 				),
 			},
 			{
@@ -65,8 +65,8 @@ func TestWorkItemMoveDirection(t *testing.T) {
 				itemID:    A.ID,
 				from:      model.WorkItemPosition{ColumnIdx: 0, ItemIdx: 0},
 				direction: model.DirectionDown,
-				want: workspace(
-					column("Column", B, A),
+				want: workspaceView(
+					columnView("Column", itemView(B), itemView(A)),
 				),
 			},
 			{
@@ -78,9 +78,9 @@ func TestWorkItemMoveDirection(t *testing.T) {
 				itemID:    A.ID,
 				from:      model.WorkItemPosition{ColumnIdx: 0, ItemIdx: 0},
 				direction: model.DirectionRight,
-				want: workspace(
-					column("Column 1", B),
-					column("Column 2", C, A),
+				want: workspaceView(
+					columnView("Column 1", itemView(B)),
+					columnView("Column 2", itemView(C), itemView(A)),
 				),
 			},
 			{
@@ -92,9 +92,9 @@ func TestWorkItemMoveDirection(t *testing.T) {
 				itemID:    A.ID,
 				from:      model.WorkItemPosition{ColumnIdx: 1, ItemIdx: 0},
 				direction: model.DirectionLeft,
-				want: workspace(
-					column("Column 1", C, A),
-					column("Column 2", B),
+				want: workspaceView(
+					columnView("Column 1", itemView(C), itemView(A)),
+					columnView("Column 2", itemView(B)),
 				),
 			},
 		}
@@ -107,7 +107,7 @@ func TestWorkItemMoveDirection(t *testing.T) {
 					t.Fatal(err)
 				}
 
-				got := wm.WorkspaceView()
+				got := wm.CurrentWorkspaceView()
 
 				if diff := cmp.Diff(tt.want, got); diff != "" {
 					t.Errorf("workspace mismatch (-want +got):\n%s", diff)
@@ -191,7 +191,7 @@ func TestWorkItemMovePosition(t *testing.T) {
 			initial model.Workspace
 			from    model.WorkItemPosition
 			to      model.WorkItemPosition
-			want    model.Workspace
+			want    model.WorkspaceView
 		}{
 			{
 				name: "move between columns",
@@ -201,9 +201,9 @@ func TestWorkItemMovePosition(t *testing.T) {
 				),
 				from: position(0, 1),
 				to:   position(1, 1),
-				want: workspace(
-					column("Column 1", A),
-					column("Column 2", C, B),
+				want: workspaceView(
+					columnView("Column 1", itemView(A)),
+					columnView("Column 2", itemView(C), itemView(B)),
 				),
 			},
 			{
@@ -213,8 +213,8 @@ func TestWorkItemMovePosition(t *testing.T) {
 				),
 				from: position(0, 2),
 				to:   position(0, 0),
-				want: workspace(
-					column("Column", C, A, B),
+				want: workspaceView(
+					columnView("Column", itemView(C), itemView(A), itemView(B)),
 				),
 			},
 			{
@@ -224,8 +224,8 @@ func TestWorkItemMovePosition(t *testing.T) {
 				),
 				from: position(0, 0),
 				to:   position(0, 2),
-				want: workspace(
-					column("Column", B, A, C),
+				want: workspaceView(
+					columnView("Column", itemView(B), itemView(A), itemView(C)),
 				),
 			},
 			{
@@ -235,8 +235,8 @@ func TestWorkItemMovePosition(t *testing.T) {
 				),
 				from: position(0, 0),
 				to:   position(0, 0),
-				want: workspace(
-					column("Column", A, B, C),
+				want: workspaceView(
+					columnView("Column", itemView(A), itemView(B), itemView(C)),
 				),
 			},
 			{
@@ -246,8 +246,8 @@ func TestWorkItemMovePosition(t *testing.T) {
 				),
 				from: position(0, 0),
 				to:   position(0, 3),
-				want: workspace(
-					column("Column", B, C, A),
+				want: workspaceView(
+					columnView("Column", itemView(B), itemView(C), itemView(A)),
 				),
 			},
 			{
@@ -257,8 +257,8 @@ func TestWorkItemMovePosition(t *testing.T) {
 				),
 				from: position(0, 2),
 				to:   position(0, 0),
-				want: workspace(
-					column("Column", C, A, B),
+				want: workspaceView(
+					columnView("Column", itemView(C), itemView(A), itemView(B)),
 				),
 			},
 		}
@@ -272,7 +272,7 @@ func TestWorkItemMovePosition(t *testing.T) {
 					t.Fatalf("WorkItemMove() unexpected error: %v", err)
 				}
 
-				got := wm.WorkspaceView()
+				got := wm.CurrentWorkspaceView()
 
 				if diff := cmp.Diff(tt.want, got); diff != "" {
 					t.Errorf("workspace mismatch (-want +got):\n%s", diff)
@@ -352,54 +352,6 @@ func TestWorkItemMovePosition(t *testing.T) {
 	})
 }
 
-func workspace(columns ...model.Column) model.Workspace {
-	return model.Workspace{
-		Columns: columns,
-	}
-}
-
-func column(name string, items ...model.WorkItem) model.Column {
-	var result []model.WorkItem
-
-	for _, item := range items {
-		result = append(result, item)
-	}
-
-	return model.Column{
-		Name:      name,
-		WorkItems: result,
-	}
-}
-
-func item(id, name string) model.WorkItem {
-	return model.WorkItem{
-		ID:   id,
-		Name: name,
-	}
-}
-
-func position(columnIdx, itemIdx int) model.WorkItemPosition {
-	return model.WorkItemPosition{
-		ColumnIdx: columnIdx,
-		ItemIdx:   itemIdx,
-	}
-}
-
-func cloneWorkspace(src model.Workspace) model.Workspace {
-	dst := src
-	dst.Columns = make([]model.Column, len(src.Columns))
-
-	for i, column := range src.Columns {
-		dst.Columns[i] = column
-		dst.Columns[i].WorkItems = append(
-			[]model.WorkItem(nil),
-			column.WorkItems...,
-		)
-	}
-
-	return dst
-}
-
 func TestWorkItemDelete(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		tests := []struct {
@@ -407,7 +359,7 @@ func TestWorkItemDelete(t *testing.T) {
 			initial model.Workspace
 			itemID  string
 			pos     model.WorkItemPosition
-			want    model.Workspace
+			want    model.WorkspaceView
 		}{
 			{
 				name: "only item",
@@ -416,7 +368,7 @@ func TestWorkItemDelete(t *testing.T) {
 				),
 				itemID: A.ID,
 				pos:    model.WorkItemPosition{},
-				want:   workspace(column("Column")),
+				want:   workspaceView(columnView("Column")),
 			},
 			{
 				name: "first item",
@@ -425,7 +377,7 @@ func TestWorkItemDelete(t *testing.T) {
 				),
 				itemID: A.ID,
 				pos:    model.WorkItemPosition{},
-				want:   workspace(column("Column", B)),
+				want:   workspaceView(columnView("Column", itemView(B))),
 			},
 			{
 				name: "middle item",
@@ -434,7 +386,7 @@ func TestWorkItemDelete(t *testing.T) {
 				),
 				itemID: B.ID,
 				pos:    model.WorkItemPosition{ColumnIdx: 0, ItemIdx: 1},
-				want:   workspace(column("Column", A, C)),
+				want:   workspaceView(columnView("Column", itemView(A), itemView(C))),
 			},
 			{
 				name: "last item",
@@ -443,7 +395,7 @@ func TestWorkItemDelete(t *testing.T) {
 				),
 				itemID: C.ID,
 				pos:    model.WorkItemPosition{ColumnIdx: 0, ItemIdx: 2},
-				want:   workspace(column("Column", A, B)),
+				want:   workspaceView(columnView("Column", itemView(A), itemView(B))),
 			},
 			{
 				name: "multiple columns",
@@ -453,9 +405,9 @@ func TestWorkItemDelete(t *testing.T) {
 				),
 				itemID: C.ID,
 				pos:    model.WorkItemPosition{ColumnIdx: 1, ItemIdx: 0},
-				want: workspace(
-					column("Column 1", A, B),
-					column("Column 2"),
+				want: workspaceView(
+					columnView("Column 1", itemView(A), itemView(B)),
+					columnView("Column 2"),
 				),
 			},
 		}
@@ -468,7 +420,7 @@ func TestWorkItemDelete(t *testing.T) {
 					t.Fatal(err)
 				}
 
-				got := wm.WorkspaceView()
+				got := wm.CurrentWorkspaceView()
 
 				if diff := cmp.Diff(tt.want, got); diff != "" {
 					t.Errorf("workspace mismatch (-want +got):\n%s", diff)
@@ -480,28 +432,24 @@ func TestWorkItemDelete(t *testing.T) {
 	t.Run("invalid", func(t *testing.T) {
 		tests := []struct {
 			name    string
-			initial model.Workspace
 			itemID  string
 			pos     model.WorkItemPosition
 			wantErr error
 		}{
 			{
 				name:    "column index",
-				initial: workspace(column("Column", A)),
 				itemID:  A.ID,
 				pos:     model.WorkItemPosition{ColumnIdx: 1},
 				wantErr: model.ErrInvalidPosition,
 			},
 			{
 				name:    "item index",
-				initial: workspace(column("Column", A)),
 				itemID:  A.ID,
 				pos:     model.WorkItemPosition{ColumnIdx: 0, ItemIdx: 1},
 				wantErr: model.ErrInvalidPosition,
 			},
 			{
 				name:    "id mismatach",
-				initial: workspace(column("Column", A)),
 				itemID:  "wrong ID",
 				pos:     model.WorkItemPosition{},
 				wantErr: model.ErrItemIDMismatch,
@@ -510,15 +458,16 @@ func TestWorkItemDelete(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				wm := model.NewWorkspaceModel(tt.initial)
-				want := cloneWorkspace(tt.initial)
+				initial := workspace(column("Column", A))
+				wm := model.NewWorkspaceModel(initial)
 
 				err := wm.WorkItemDelete(tt.itemID, tt.pos)
 				if !errors.Is(err, tt.wantErr) {
 					t.Fatalf("expected err %v, got %v", tt.wantErr, err)
 				}
 
-				got := wm.WorkspaceView()
+				want := workspaceView(columnView("Column", itemView(A)))
+				got := wm.CurrentWorkspaceView()
 
 				if diff := cmp.Diff(want, got); diff != "" {
 					t.Errorf("workspace mismatch (-want +got):\n%s", diff)
@@ -537,7 +486,7 @@ func TestWorkItemAdd(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		got := wm.WorkspaceView()
+		got := wm.CurrentWorkspaceView()
 		items := got.Columns[0].WorkItems
 
 		if len(items) != 2 {
@@ -562,8 +511,10 @@ func TestWorkItemAdd(t *testing.T) {
 			t.Fatalf("expected error %v, got %v", model.ErrInvalidWorkItemName, err)
 		}
 
-		got := wm.WorkspaceView()
-		if diff := cmp.Diff(initial, got); diff != "" {
+		want := workspaceView(columnView("Column", itemView(A)))
+		got := wm.CurrentWorkspaceView()
+
+		if diff := cmp.Diff(want, got); diff != "" {
 			t.Errorf("workspace mismatch (-want +got):\n%s", diff)
 		}
 	})
