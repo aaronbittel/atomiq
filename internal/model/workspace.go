@@ -343,6 +343,6 @@ func ParseMoveDirection(s string) (MoveDirection, error) {
 	case "left":
 		return DirectionLeft, nil
 	default:
-		return "", fmt.Errorf("unknown move direction %q", s)
+		return "", fmt.Errorf("%w: %q", ErrInvalidMoveDirection, s)
 	}
 }
