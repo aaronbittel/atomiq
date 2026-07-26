@@ -230,7 +230,7 @@ func TestWorkItemMovePosition(t *testing.T) {
 				from: position(0, 0),
 				to:   position(0, 2),
 				want: workspace(
-					column(B, C, A),
+					column(B, A, C),
 				),
 			},
 			{
@@ -242,6 +242,28 @@ func TestWorkItemMovePosition(t *testing.T) {
 				to:   position(0, 0),
 				want: workspace(
 					column(A, B, C),
+				),
+			},
+			{
+				name: "same column move to end",
+				initial: workspace(
+					column(A, B, C),
+				),
+				from: position(0, 0),
+				to:   position(0, 3),
+				want: workspace(
+					column(B, C, A),
+				),
+			},
+			{
+				name: "same column move to beginning",
+				initial: workspace(
+					column(A, B, C),
+				),
+				from: position(0, 2),
+				to:   position(0, 0),
+				want: workspace(
+					column(C, A, B),
 				),
 			},
 		}

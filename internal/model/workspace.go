@@ -182,6 +182,9 @@ func (wm *WorkspaceModel) moveWorkItemWithinColumn(columnIdx, fromIdx, toIdx int
 	item := items[fromIdx]
 
 	items = slices.Delete(items, fromIdx, fromIdx+1)
+	if fromIdx < toIdx {
+		toIdx -= 1
+	}
 	items = slices.Insert(items, toIdx, item)
 
 	wm.Workspace.Columns[columnIdx].WorkItems = items
@@ -232,7 +235,7 @@ func (wm *WorkspaceModel) getToWorkItemPosition(from WorkItemPosition, direction
 		}
 		to = WorkItemPosition{
 			ColumnIdx: from.ColumnIdx,
-			ItemIdx:   from.ItemIdx + 1,
+			ItemIdx:   from.ItemIdx + 2,
 		}
 	case DirectionRight:
 		columns := wm.Workspace.Columns
