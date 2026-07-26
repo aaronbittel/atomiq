@@ -11,9 +11,23 @@ import (
 	"github.com/aaronbittel/atomiq/internal/model"
 )
 
+type moveDirectionView struct {
+	Value  string
+	Symbol string
+}
+
+var moveDirectionViews = []moveDirectionView{
+	{Value: "up", Symbol: "↑"},
+	{Value: "down", Symbol: "↓"},
+	{Value: "right", Symbol: "→"},
+	{Value: "left", Symbol: "←"},
+}
+
 type workspaceRenderView struct {
 	Ws        model.Workspace
 	ColumnErr *ColumnErr
+
+	MoveDirections []moveDirectionView
 }
 
 type ColumnErr struct {
@@ -29,7 +43,11 @@ func (app *application) workspaceView(w http.ResponseWriter, r *http.Request) {
 	}
 	t.Option("missingkey=error")
 
-	data := workspaceRenderView{Ws: app.workspaceModel.WorkspaceView()}
+	data := workspaceRenderView{
+		Ws:             app.workspaceModel.WorkspaceView(),
+		MoveDirections: moveDirectionViews,
+	}
+
 	if columnErr, ok := app.sessionManager.Pop(r.Context(), "columnErr").(*ColumnErr); ok {
 		data.ColumnErr = columnErr
 	}
@@ -127,11 +145,10 @@ func (app *application) parseMoveFormData(r *http.Request) (model.WorkItemPositi
 		return model.WorkItemPosition{}, "", err
 	}
 
-	wip := model.WorkItemPosition{ColumnIdx: columnIdx, ItemIdx: itemIdx}
-	return wip, moveDir, nil
+	from := model.WorkItemPosition{ColumnIdx: columnIdx, ItemIdx: itemIdx}
+	return from, moveDir, nil
 }
 
-// Do I need the mutex lock on the model for the duration of this handler?
 func (app *application) workItemMove(w http.ResponseWriter, r *http.Request) {
 	srcPos, direction, err := app.parseMoveFormData(r)
 	if err != nil {

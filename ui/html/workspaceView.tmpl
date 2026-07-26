@@ -15,34 +15,15 @@
                 <div class="work-item-box">
                     <div class="work-item bordered-box">
                         <p>{{$item.Name}}</p>
+                        {{range $.MoveDirections}}
                         <form action="/work-item/{{$item.ID}}/move" method="post">
                             <input type="hidden" name="_method" value="PATCH">
                             <input type="hidden" name="fromColumnIdx" value="{{$columnIdx}}">
                             <input type="hidden" name="fromItemIdx" value="{{$itemIdx}}">
-                            <input type="hidden" name="direction" value="up">
-                            <button type="submit" class="arrow arrow-top" aria-label="Move up">↑</button>
+                            <input type="hidden" name="direction" value="{{.Value}}">
+                            <button type="submit" class="arrow arrow-{{.Value}}" aria-label="Move {{.Value}}">{{.Symbol}}</button>
                         </form>
-                        <form action="/work-item/{{$item.ID}}/move" method="post">
-                            <input type="hidden" name="_method" value="PATCH">
-                            <input type="hidden" name="fromColumnIdx" value="{{$columnIdx}}">
-                            <input type="hidden" name="fromItemIdx" value="{{$itemIdx}}">
-                            <input type="hidden" name="direction" value="down">
-                            <button type="submit" class="arrow arrow-bottom" aria-label="Move down">↓</button>
-                        </form>
-                        <form action="/work-item/{{$item.ID}}/move" method="post">
-                            <input type="hidden" name="_method" value="PATCH">
-                            <input type="hidden" name="fromColumnIdx" value="{{$columnIdx}}">
-                            <input type="hidden" name="fromItemIdx" value="{{$itemIdx}}">
-                            <input type="hidden" name="direction" value="right">
-                            <button type="submit" class="arrow arrow-right" aria-label="Move right">→</button>
-                        </form>
-                        <form action="/work-item/{{$item.ID}}/move" method="post">
-                            <input type="hidden" name="_method" value="PATCH">
-                            <input type="hidden" name="fromColumnIdx" value="{{$columnIdx}}">
-                            <input type="hidden" name="fromItemIdx" value="{{$itemIdx}}">
-                            <input type="hidden" name="direction" value="left">
-                            <button type="submit" class="arrow arrow-left" aria-label="Move left">←</button>
-                        </form>
+                        {{end}}
                     </div>
                     <form action="/work-item/{{$item.ID}}" method="post">
                         <input type="hidden" name="columnIdx" value="{{$columnIdx}}">
