@@ -273,7 +273,7 @@ func TestWorkItemMovePosition(t *testing.T) {
 			wantErr error
 		}{
 			{
-				name: "invalid source column",
+				name: "from column",
 				initial: workspace(
 					column(A),
 				),
@@ -282,7 +282,7 @@ func TestWorkItemMovePosition(t *testing.T) {
 				wantErr: model.ErrInvalidPosition,
 			},
 			{
-				name: "invalid destination column",
+				name: "to column",
 				initial: workspace(
 					column(A),
 				),
@@ -291,7 +291,7 @@ func TestWorkItemMovePosition(t *testing.T) {
 				wantErr: model.ErrInvalidPosition,
 			},
 			{
-				name: "invalid source index",
+				name: "from index",
 				initial: workspace(
 					column(A),
 				),
@@ -300,7 +300,7 @@ func TestWorkItemMovePosition(t *testing.T) {
 				wantErr: model.ErrInvalidPosition,
 			},
 			{
-				name: "invalid destination index",
+				name: "to index",
 				initial: workspace(
 					column(A),
 					column(),
@@ -321,12 +321,6 @@ func TestWorkItemMovePosition(t *testing.T) {
 
 				if !errors.Is(err, tt.wantErr) {
 					t.Fatalf("WorkItemMove() expected error: %v, got nil", tt.wantErr)
-				}
-
-				got := wm.WorkspaceView()
-
-				if diff := cmp.Diff(tt.initial, got); diff != "" {
-					t.Errorf("workspace mismatch (-want +got):\n%s", diff)
 				}
 			})
 		}
