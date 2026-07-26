@@ -41,6 +41,9 @@ type WorkItem struct {
 type MoveDirection string
 
 const (
+	// WorkItemIDLength is the number of characters generated for work item IDs.
+	WorkItemIDLength = 8
+
 	DirectionUp    MoveDirection = "up"
 	DirectionDown  MoveDirection = "down"
 	DirectionRight MoveDirection = "right"
@@ -160,6 +163,7 @@ func (wm *WorkspaceModel) WorkItemMoveDirection(itemID string, from WorkItemPosi
 	return wm.moveWorkItemToPosition(from, to)
 }
 
+// wm.mu must be locked.
 func (wm *WorkspaceModel) isValidFromPosition(pos WorkItemPosition) error {
 	columns := wm.workspace.Columns
 
@@ -174,6 +178,7 @@ func (wm *WorkspaceModel) isValidFromPosition(pos WorkItemPosition) error {
 	return nil
 }
 
+// wm.mu must be locked.
 func (wm *WorkspaceModel) isValidToPosition(pos WorkItemPosition) error {
 	columns := wm.workspace.Columns
 
@@ -225,7 +230,7 @@ func (wm *WorkspaceModel) WorkItemMovePosition(from, to WorkItemPosition) error 
 	return wm.moveWorkItemToPosition(from, to)
 }
 
-// moveWorkItemToPosition expects the mutex to be already locked
+// wm.mu must be locked.
 func (wm *WorkspaceModel) moveWorkItemToPosition(from, to WorkItemPosition) error {
 	if from.ColumnIdx == to.ColumnIdx {
 		return wm.moveWorkItemWithinColumn(from.ColumnIdx, from.ItemIdx, to.ItemIdx)
@@ -234,7 +239,7 @@ func (wm *WorkspaceModel) moveWorkItemToPosition(from, to WorkItemPosition) erro
 	return wm.moveWorkItemBetweenColumns(from, to)
 }
 
-// moveWorkItemWithinColumn expects the mutex to be already locked
+// wm.mu must be locked.
 func (wm *WorkspaceModel) moveWorkItemWithinColumn(columnIdx, fromIdx, toIdx int) error {
 	items := wm.workspace.Columns[columnIdx].WorkItems
 	item := items[fromIdx]
@@ -252,7 +257,7 @@ func (wm *WorkspaceModel) moveWorkItemWithinColumn(columnIdx, fromIdx, toIdx int
 	return nil
 }
 
-// moveWorkItemBetweenColumns expects the mutex to be already locked
+// wm.mu must be locked.
 func (wm *WorkspaceModel) moveWorkItemBetweenColumns(from, to WorkItemPosition) error {
 	fromItems := wm.workspace.Columns[from.ColumnIdx].WorkItems
 	toItems := wm.workspace.Columns[to.ColumnIdx].WorkItems
@@ -270,12 +275,12 @@ func (wm *WorkspaceModel) moveWorkItemBetweenColumns(from, to WorkItemPosition) 
 // NewWorkItem creates a work item with a generated short ID.
 func NewWorkItem(name string) WorkItem {
 	return WorkItem{
-		ID:   rand.Text()[:8],
+		ID:   rand.Text()[:WorkItemIDLength],
 		Name: name,
 	}
 }
 
-// getToWorkItemPosition expects the mutex to be already locked
+// wm.mu must be locked.
 func (wm *WorkspaceModel) getToWorkItemPosition(from WorkItemPosition, direction MoveDirection) (WorkItemPosition, error) {
 	var to WorkItemPosition
 	switch direction {

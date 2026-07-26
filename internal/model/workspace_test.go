@@ -548,7 +548,7 @@ func TestWorkItemAdd(t *testing.T) {
 			t.Fatalf("expected trimmed name %q, got %q", "New item", items[1].Name)
 		}
 
-		if len(items[1].ID) != 8 {
+		if len(items[1].ID) != model.WorkItemIDLength {
 			t.Fatal("invalid work item ID")
 		}
 	})

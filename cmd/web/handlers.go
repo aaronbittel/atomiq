@@ -101,7 +101,7 @@ func (app *application) workItemDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	itemID := r.PathValue("id")
-	if len(itemID) != 8 {
+	if len(itemID) != model.WorkItemIDLength {
 		app.clientError(w, http.StatusUnprocessableEntity)
 		return
 	}
@@ -167,7 +167,7 @@ func (app *application) workItemMove(w http.ResponseWriter, r *http.Request) {
 	}
 
 	workItemID := r.PathValue("id")
-	if len(workItemID) != 8 {
+	if len(workItemID) != model.WorkItemIDLength {
 		app.clientError(w, http.StatusUnprocessableEntity)
 		return
 	}
