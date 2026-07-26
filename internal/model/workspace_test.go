@@ -309,6 +309,16 @@ func TestWorkItemMovePosition(t *testing.T) {
 				to:      position(1, 2),
 				wantErr: model.ErrInvalidPosition,
 			},
+			// TODO: find better name, is this tests useful now after refactoring?
+			{
+				name: "from==to, but illegal access",
+				initial: workspace(
+					column(A),
+				),
+				from:    position(9, 0),
+				to:      position(9, 0),
+				wantErr: model.ErrInvalidPosition,
+			},
 		}
 
 		for _, tt := range tests {
