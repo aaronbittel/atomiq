@@ -28,27 +28,25 @@ func main() {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	workspaceModel := &model.WorkspaceModel{
-		Workspace: model.Workspace{
-			Columns: []model.Column{
-				{
-					Name:      "Backlog",
-					WorkItems: []model.WorkItem{model.NewWorkItem("Some Item"), model.NewWorkItem("Another Item")},
-				},
-				{
-					Name:      "In Progress",
-					WorkItems: []model.WorkItem{model.NewWorkItem("Cool Stuff"), model.NewWorkItem("Atomiq"), model.NewWorkItem("Hyped")},
-				},
-				{
-					Name:      "Done",
-					WorkItems: []model.WorkItem{model.NewWorkItem("Ofc something"), model.NewWorkItem("this is also done")},
-				},
+	workspace := model.Workspace{
+		Columns: []model.Column{
+			{
+				Name:      "Backlog",
+				WorkItems: []model.WorkItem{model.NewWorkItem("Some Item"), model.NewWorkItem("Another Item")},
+			},
+			{
+				Name:      "In Progress",
+				WorkItems: []model.WorkItem{model.NewWorkItem("Cool Stuff"), model.NewWorkItem("Atomiq"), model.NewWorkItem("Hyped")},
+			},
+			{
+				Name:      "Done",
+				WorkItems: []model.WorkItem{model.NewWorkItem("Ofc something"), model.NewWorkItem("this is also done")},
 			},
 		},
 	}
 
 	app := application{
-		workspaceModel: workspaceModel,
+		workspaceModel: model.NewWorkspaceModel(workspace),
 		sessionManager: scs.New(),
 		logger:         logger,
 	}

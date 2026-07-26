@@ -14,7 +14,7 @@ import (
 // concurrent requests.
 type WorkspaceModel struct {
 	mu        sync.RWMutex
-	Workspace Workspace
+	workspace Workspace
 }
 
 // Workspace is the board shown by the application.
@@ -46,6 +46,13 @@ const (
 	DirectionLeft  MoveDirection = "left"
 )
 
+// NewWorkspaceModel creates a new NewWorkspaceModel.
+func NewWorkspaceModel(workspace Workspace) *WorkspaceModel {
+	return &WorkspaceModel{
+		workspace: workspace,
+	}
+}
+
 // WorkspaceView returns a snapshot of the workspace.
 // The returned slices do not share backing arrays with the model, so callers
 // can render or inspect the snapshot without holding the model lock.
@@ -53,8 +60,8 @@ func (wm *WorkspaceModel) WorkspaceView() Workspace {
 	wm.mu.RLock()
 	defer wm.mu.RUnlock()
 
-	columns := make([]Column, len(wm.Workspace.Columns))
-	for i, col := range wm.Workspace.Columns {
+	columns := make([]Column, len(wm.workspace.Columns))
+	for i, col := range wm.workspace.Columns {
 		columns[i] = Column{
 			Name:      col.Name,
 			WorkItems: append([]WorkItem(nil), col.WorkItems...),
@@ -76,11 +83,11 @@ func (wm *WorkspaceModel) WorkItemAdd(columnIdx int, workItemName string) error 
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
 
-	if !validSliceAccess(columnIdx, len(wm.Workspace.Columns)) {
+	if !validSliceAccess(columnIdx, len(wm.workspace.Columns)) {
 		return ErrInvalidColumn
 	}
 
-	wm.Workspace.Columns[columnIdx].WorkItems = append(wm.Workspace.Columns[columnIdx].WorkItems, NewWorkItem(workItemName))
+	wm.workspace.Columns[columnIdx].WorkItems = append(wm.workspace.Columns[columnIdx].WorkItems, NewWorkItem(workItemName))
 	return nil
 }
 
@@ -89,11 +96,11 @@ func (wm *WorkspaceModel) WorkItemDelete(columnIdx int, workItemID string) error
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
 
-	if !validSliceAccess(columnIdx, len(wm.Workspace.Columns)) {
+	if !validSliceAccess(columnIdx, len(wm.workspace.Columns)) {
 		return ErrInvalidColumn
 	}
 
-	column := &wm.Workspace.Columns[columnIdx]
+	column := &wm.workspace.Columns[columnIdx]
 	column.WorkItems = slices.DeleteFunc(column.WorkItems, func(wi WorkItem) bool {
 		return wi.ID == workItemID
 	})
@@ -113,7 +120,7 @@ func (wm *WorkspaceModel) WorkItemMoveDirection(itemID string, from WorkItemPosi
 		return fmt.Errorf("%w: %v", ErrInvalidPosition, err)
 	}
 
-	item := wm.Workspace.Columns[from.ColumnIdx].WorkItems[from.ItemIdx]
+	item := wm.workspace.Columns[from.ColumnIdx].WorkItems[from.ItemIdx]
 	if itemID != item.ID {
 		return fmt.Errorf("%w: expected %q, got %q", ErrItemIDMismatch, itemID, item.ID)
 	}
@@ -135,7 +142,7 @@ func (wm *WorkspaceModel) WorkItemMoveDirection(itemID string, from WorkItemPosi
 }
 
 func (wm *WorkspaceModel) isValidFromPosition(pos WorkItemPosition) error {
-	columns := wm.Workspace.Columns
+	columns := wm.workspace.Columns
 
 	if !validSliceAccess(pos.ColumnIdx, len(columns)) {
 		return errors.New("from column index out of bounds")
@@ -149,7 +156,7 @@ func (wm *WorkspaceModel) isValidFromPosition(pos WorkItemPosition) error {
 }
 
 func (wm *WorkspaceModel) isValidToPosition(pos WorkItemPosition) error {
-	columns := wm.Workspace.Columns
+	columns := wm.workspace.Columns
 
 	if !validSliceAccess(pos.ColumnIdx, len(columns)) {
 		return errors.New("to column index out of bounds")
@@ -210,7 +217,7 @@ func (wm *WorkspaceModel) moveWorkItemToPosition(from, to WorkItemPosition) erro
 
 // moveWorkItemWithinColumn expects the mutex to be already locked
 func (wm *WorkspaceModel) moveWorkItemWithinColumn(columnIdx, fromIdx, toIdx int) error {
-	items := wm.Workspace.Columns[columnIdx].WorkItems
+	items := wm.workspace.Columns[columnIdx].WorkItems
 	item := items[fromIdx]
 
 	items = slices.Delete(items, fromIdx, fromIdx+1)
@@ -221,22 +228,22 @@ func (wm *WorkspaceModel) moveWorkItemWithinColumn(columnIdx, fromIdx, toIdx int
 	}
 	items = slices.Insert(items, toIdx, item)
 
-	wm.Workspace.Columns[columnIdx].WorkItems = items
+	wm.workspace.Columns[columnIdx].WorkItems = items
 
 	return nil
 }
 
 // moveWorkItemBetweenColumns expects the mutex to be already locked
 func (wm *WorkspaceModel) moveWorkItemBetweenColumns(from, to WorkItemPosition) error {
-	fromItems := wm.Workspace.Columns[from.ColumnIdx].WorkItems
-	toItems := wm.Workspace.Columns[to.ColumnIdx].WorkItems
+	fromItems := wm.workspace.Columns[from.ColumnIdx].WorkItems
+	toItems := wm.workspace.Columns[to.ColumnIdx].WorkItems
 
 	item := fromItems[from.ItemIdx]
 	fromItems = slices.Delete(fromItems, from.ItemIdx, from.ItemIdx+1)
 	toItems = slices.Insert(toItems, to.ItemIdx, item)
 
-	wm.Workspace.Columns[from.ColumnIdx].WorkItems = fromItems
-	wm.Workspace.Columns[to.ColumnIdx].WorkItems = toItems
+	wm.workspace.Columns[from.ColumnIdx].WorkItems = fromItems
+	wm.workspace.Columns[to.ColumnIdx].WorkItems = toItems
 
 	return nil
 }
@@ -262,7 +269,7 @@ func (wm *WorkspaceModel) getToWorkItemPosition(from WorkItemPosition, direction
 			ItemIdx:   from.ItemIdx - 1,
 		}
 	case DirectionDown:
-		items := wm.Workspace.Columns[from.ColumnIdx].WorkItems
+		items := wm.workspace.Columns[from.ColumnIdx].WorkItems
 		if from.ItemIdx == len(items)-1 {
 			return from, nil
 		}
@@ -271,7 +278,7 @@ func (wm *WorkspaceModel) getToWorkItemPosition(from WorkItemPosition, direction
 			ItemIdx:   from.ItemIdx + 2,
 		}
 	case DirectionRight:
-		columns := wm.Workspace.Columns
+		columns := wm.workspace.Columns
 		if from.ColumnIdx == len(columns)-1 {
 			return from, nil
 		}
@@ -287,7 +294,7 @@ func (wm *WorkspaceModel) getToWorkItemPosition(from WorkItemPosition, direction
 			return from, nil
 		}
 
-		columns := wm.Workspace.Columns
+		columns := wm.workspace.Columns
 		toColumnIdx := from.ColumnIdx - 1
 
 		to = WorkItemPosition{

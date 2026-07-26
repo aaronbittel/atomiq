@@ -18,9 +18,10 @@ func TestWorkItemMoveDirection(t *testing.T) {
 	t.Run("no ops", func(t *testing.T) {
 		for _, dir := range []model.MoveDirection{model.DirectionUp, model.DirectionDown, model.DirectionRight, model.DirectionLeft} {
 			t.Run(string(dir), func(t *testing.T) {
-				wm := model.WorkspaceModel{Workspace: workspace(column(A))}
+				workspace := workspace(column(A))
+				wm := model.NewWorkspaceModel(workspace)
 
-				want := cloneWorkspace(wm.Workspace)
+				want := cloneWorkspace(workspace)
 
 				if err := wm.WorkItemMoveDirection("1", model.WorkItemPosition{}, dir); err != nil {
 					t.Fatal(err)
@@ -100,7 +101,7 @@ func TestWorkItemMoveDirection(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				wm := model.WorkspaceModel{Workspace: tt.initial}
+				wm := model.NewWorkspaceModel(tt.initial)
 
 				if err := wm.WorkItemMoveDirection(tt.itemID, tt.from, tt.direction); err != nil {
 					t.Fatal(err)
@@ -168,7 +169,7 @@ func TestWorkItemMoveDirection(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				wm := model.WorkspaceModel{Workspace: tt.initial}
+				wm := model.NewWorkspaceModel(tt.initial)
 
 				err := wm.WorkItemMoveDirection(tt.itemID, tt.from, tt.direction)
 				if err == nil {
@@ -270,7 +271,7 @@ func TestWorkItemMovePosition(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				wm := &model.WorkspaceModel{Workspace: tt.initial}
+				wm := model.NewWorkspaceModel(tt.initial)
 
 				err := wm.WorkItemMovePosition(tt.from, tt.to)
 				if err != nil {
@@ -345,9 +346,7 @@ func TestWorkItemMovePosition(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				wm := &model.WorkspaceModel{
-					Workspace: cloneWorkspace(tt.initial),
-				}
+				wm := model.NewWorkspaceModel(tt.initial)
 
 				err := wm.WorkItemMovePosition(tt.from, tt.to)
 

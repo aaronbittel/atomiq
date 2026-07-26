@@ -13,13 +13,13 @@ func TestWorkItemPost(t *testing.T) {
 	t.Run("valid work item", func(t *testing.T) {
 		t.Chdir("../..")
 
-		workspaceModel := &model.WorkspaceModel{
-			Workspace: model.Workspace{
+		workspaceModel := model.NewWorkspaceModel(
+			model.Workspace{
 				Columns: []model.Column{
 					{Name: "Backlog"},
 				},
 			},
-		}
+		)
 
 		app := newTestApplication(t, workspaceModel)
 		app.logger = slog.New(slog.NewTextHandler(t.Output(), nil))
@@ -42,13 +42,13 @@ func TestWorkItemPost(t *testing.T) {
 	t.Run("blank work item name", func(t *testing.T) {
 		t.Chdir("../..")
 
-		workspaceModel := &model.WorkspaceModel{
-			Workspace: model.Workspace{
+		workspaceModel := model.NewWorkspaceModel(
+			model.Workspace{
 				Columns: []model.Column{
 					{Name: "Backlog"},
 				},
 			},
-		}
+		)
 
 		app := newTestApplication(t, workspaceModel)
 		ts := newTestServer(t, app.routes())
@@ -104,8 +104,8 @@ func TestWorkItemDelete(t *testing.T) {
 
 		workItem1 := model.NewWorkItem("Todo 1")
 
-		workspaceModel := &model.WorkspaceModel{
-			Workspace: model.Workspace{
+		workspaceModel := model.NewWorkspaceModel(
+			model.Workspace{
 				Columns: []model.Column{
 					{
 						Name: "Backlog",
@@ -116,7 +116,7 @@ func TestWorkItemDelete(t *testing.T) {
 					},
 				},
 			},
-		}
+		)
 
 		app := newTestApplication(t, workspaceModel)
 		ts := newTestServer(t, app.routes())
