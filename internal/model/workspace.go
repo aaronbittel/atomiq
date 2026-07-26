@@ -90,17 +90,21 @@ func (wm *WorkspaceModel) WorkItemMoveDirection(itemID string, from WorkItemPosi
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
 
-	item, err := wm.workItemGetUnlocked(from.ColumnIdx, from.ItemIdx)
-	if err != nil {
+	if err := wm.isValidFromPosition(from); err != nil {
 		return err
 	}
 
+	item := wm.Workspace.Columns[from.ColumnIdx].WorkItems[from.ItemIdx]
 	if itemID != item.ID {
 		return fmt.Errorf("%w: expected %q, got %q", ErrItemIDMismatch, itemID, item.ID)
 	}
 
-	to, err := wm.getToWorkItemPositionUnlocked(from, direction)
+	to, err := wm.getToWorkItemPosition(from, direction)
 	if err != nil {
+		return err
+	}
+
+	if err := wm.isValidToPosition(to); err != nil {
 		return err
 	}
 
@@ -108,22 +112,35 @@ func (wm *WorkspaceModel) WorkItemMoveDirection(itemID string, from WorkItemPosi
 		return nil
 	}
 
-	return wm.moveWorkItemToPositionUnlocked(from, to)
+	return wm.moveWorkItemToPosition(from, to)
 }
 
-// workItemGetUnlocked expects the mutex to be already locked
-func (wm *WorkspaceModel) workItemGetUnlocked(columnIdx, itemIdx int) (WorkItem, error) {
+func (wm *WorkspaceModel) isValidFromPosition(pos WorkItemPosition) error {
 	columns := wm.Workspace.Columns
 
-	if !validSliceAccess(columnIdx, len(columns)) {
-		return WorkItem{}, fmt.Errorf("%w: column index", ErrInvalidPosition)
+	if !validSliceAccess(pos.ColumnIdx, len(columns)) {
+		return fmt.Errorf("%w: from column index", ErrInvalidPosition)
 	}
 
-	if !validSliceAccess(itemIdx, len(columns[columnIdx].WorkItems)) {
-		return WorkItem{}, fmt.Errorf("%w: index index", ErrInvalidPosition)
+	if !validSliceAccess(pos.ItemIdx, len(columns[pos.ColumnIdx].WorkItems)) {
+		return fmt.Errorf("%w: from item index", ErrInvalidPosition)
 	}
 
-	return wm.Workspace.Columns[columnIdx].WorkItems[itemIdx], nil
+	return nil
+}
+
+func (wm *WorkspaceModel) isValidToPosition(pos WorkItemPosition) error {
+	columns := wm.Workspace.Columns
+
+	if !validSliceAccess(pos.ColumnIdx, len(columns)) {
+		return fmt.Errorf("%w: to column index", ErrInvalidPosition)
+	}
+
+	if !validSliceAccess(pos.ItemIdx, len(columns[pos.ColumnIdx].WorkItems)+1) {
+		return fmt.Errorf("%w: to item index", ErrInvalidPosition)
+	}
+
+	return nil
 }
 
 type WorkItemPosition struct {
@@ -132,38 +149,36 @@ type WorkItemPosition struct {
 }
 
 func (wm *WorkspaceModel) WorkItemMovePosition(from, to WorkItemPosition) error {
+	wm.mu.Lock()
+	defer wm.mu.Unlock()
+
+	if err := wm.isValidFromPosition(from); err != nil {
+		return err
+	}
+
+	if err := wm.isValidToPosition(to); err != nil {
+		return err
+	}
+
 	if from == to {
 		return nil
 	}
 
-	wm.mu.Lock()
-	defer wm.mu.Unlock()
-
-	return wm.moveWorkItemToPositionUnlocked(from, to)
+	return wm.moveWorkItemToPosition(from, to)
 }
 
-// moveWorkItemToPositionUnlocked expects the mutex to be already locked
-func (wm *WorkspaceModel) moveWorkItemToPositionUnlocked(from, to WorkItemPosition) error {
+// moveWorkItemToPosition expects the mutex to be already locked
+func (wm *WorkspaceModel) moveWorkItemToPosition(from, to WorkItemPosition) error {
 	if from.ColumnIdx == to.ColumnIdx {
-		return wm.moveWorkItemWithinColumnUnlocked(from.ColumnIdx, from.ItemIdx, to.ItemIdx)
+		return wm.moveWorkItemWithinColumn(from.ColumnIdx, from.ItemIdx, to.ItemIdx)
 	}
 
-	return wm.moveWorkItemBetweenColumnsUnlocked(from, to)
+	return wm.moveWorkItemBetweenColumns(from, to)
 }
 
-// moveWorkItemWithinColumnUnlocked expects the mutex to be already locked
-func (wm *WorkspaceModel) moveWorkItemWithinColumnUnlocked(columnIdx, fromIdx, toIdx int) error {
-	if !validSliceAccess(columnIdx, len(wm.Workspace.Columns)) {
-		return fmt.Errorf("%w: source column %d", ErrInvalidPosition, columnIdx)
-	}
+// moveWorkItemWithinColumn expects the mutex to be already locked
+func (wm *WorkspaceModel) moveWorkItemWithinColumn(columnIdx, fromIdx, toIdx int) error {
 	items := wm.Workspace.Columns[columnIdx].WorkItems
-	if !validSliceAccess(fromIdx, len(items)) {
-		return fmt.Errorf("%w: source index %d", ErrInvalidPosition, fromIdx)
-	}
-	if !validSliceAccess(toIdx, len(items)) {
-		return fmt.Errorf("%w: source index %d", ErrInvalidPosition, toIdx)
-	}
-
 	item := items[fromIdx]
 
 	items = slices.Delete(items, fromIdx, fromIdx+1)
@@ -174,22 +189,10 @@ func (wm *WorkspaceModel) moveWorkItemWithinColumnUnlocked(columnIdx, fromIdx, t
 	return nil
 }
 
-// moveWorkItemBetweenColumnsUnlocked expects the mutex to be already locked
-func (wm *WorkspaceModel) moveWorkItemBetweenColumnsUnlocked(from, to WorkItemPosition) error {
-	if !validSliceAccess(from.ColumnIdx, len(wm.Workspace.Columns)) {
-		return fmt.Errorf("%w: source column %d", ErrInvalidPosition, from.ColumnIdx)
-	}
+// moveWorkItemBetweenColumns expects the mutex to be already locked
+func (wm *WorkspaceModel) moveWorkItemBetweenColumns(from, to WorkItemPosition) error {
 	fromItems := wm.Workspace.Columns[from.ColumnIdx].WorkItems
-	if !validSliceAccess(from.ItemIdx, len(fromItems)) {
-		return fmt.Errorf("%w: source index %d", ErrInvalidPosition, from.ItemIdx)
-	}
-	if !validSliceAccess(to.ColumnIdx, len(wm.Workspace.Columns)) {
-		return fmt.Errorf("%w: destination column %d", ErrInvalidPosition, to.ColumnIdx)
-	}
 	toItems := wm.Workspace.Columns[to.ColumnIdx].WorkItems
-	if to.ItemIdx < 0 || to.ItemIdx > len(toItems) {
-		return fmt.Errorf("%w: destination index %d", ErrInvalidPosition, to.ItemIdx)
-	}
 
 	item := fromItems[from.ItemIdx]
 	fromItems = slices.Delete(fromItems, from.ItemIdx, from.ItemIdx+1)
@@ -210,8 +213,8 @@ func NewWorkItem(name string) WorkItem {
 
 var ErrInvalidMoveDirection = errors.New("invalid move direction")
 
-// getToWorkItemPositionUnlocked expects the mutex to be already locked
-func (wm *WorkspaceModel) getToWorkItemPositionUnlocked(from WorkItemPosition, direction MoveDirection) (WorkItemPosition, error) {
+// getToWorkItemPosition expects the mutex to be already locked
+func (wm *WorkspaceModel) getToWorkItemPosition(from WorkItemPosition, direction MoveDirection) (WorkItemPosition, error) {
 	var to WorkItemPosition
 	switch direction {
 	case DirectionUp:
