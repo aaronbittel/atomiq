@@ -50,6 +50,16 @@ func itemIdxErr(columnIdx, itemIdx, length int) error {
 	)
 }
 
+func itemInsertionIdxErr(columnIdx, insertIdx, length int) error {
+	return fmt.Errorf(
+		"%w: item insertion index %d out of bounds for column %d with %d items",
+		ErrInvalidPosition,
+		insertIdx,
+		columnIdx,
+		length,
+	)
+}
+
 func (ws *Workspace) add(columnIdx int, name string) error {
 	if !validSliceAccess(columnIdx, len(ws.Columns)) {
 		return columnIdxErr(columnIdx, len(ws.Columns))
@@ -266,8 +276,8 @@ func (ws *Workspace) isValidToPosition(pos WorkItemPosition) error {
 		return columnIdxErr(pos.ColumnIdx, len(ws.Columns))
 	}
 
-	if !validSliceAccess(pos.ItemIdx, len(ws.Columns[pos.ColumnIdx].WorkItems)+1) {
-		return itemIdxErr(pos.ColumnIdx, pos.ItemIdx, len(ws.Columns[pos.ColumnIdx].WorkItems)+1)
+	if !validInsertionIndex(pos.ItemIdx, len(ws.Columns[pos.ColumnIdx].WorkItems)) {
+		return itemInsertionIdxErr(pos.ColumnIdx, pos.ItemIdx, len(ws.Columns[pos.ColumnIdx].WorkItems))
 	}
 
 	return nil
@@ -275,4 +285,8 @@ func (ws *Workspace) isValidToPosition(pos WorkItemPosition) error {
 
 func validSliceAccess(idx, length int) bool {
 	return idx >= 0 && idx < length
+}
+
+func validInsertionIndex(idx, length int) bool {
+	return idx >= 0 && idx <= length
 }
