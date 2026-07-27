@@ -8,7 +8,6 @@ import (
 var (
 	ErrInvalidPosition      = errors.New("invalid position")
 	ErrInvalidWorkItemName  = errors.New("invalid work item name")
-	ErrItemIDMismatch       = errors.New("item ID mismatch")
 	ErrInvalidMoveDirection = errors.New("invalid move direction")
 	ErrWorkItemNotFound     = errors.New("work item not found")
 )
