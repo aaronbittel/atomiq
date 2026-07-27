@@ -452,3 +452,56 @@ func TestMoveToPosition(t *testing.T) {
 		}
 	})
 }
+
+func TestFindWorkItemPosition(t *testing.T) {
+	tests := []struct {
+		name    string
+		ws      Workspace
+		id      string
+		want    WorkItemPosition
+		wantErr error
+	}{
+		{
+			name: "first column",
+			ws: workspace(
+				column("One", A, B),
+				column("Two", C),
+			),
+			id:   B.ID,
+			want: position(0, 1),
+		},
+		{
+			name: "second column",
+			ws: workspace(
+				column("One", A),
+				column("Two", B, C),
+			),
+			id:   C.ID,
+			want: position(1, 1),
+		},
+		{
+			name:    "not found",
+			ws:      workspace(column("One", A)),
+			id:      "missing",
+			wantErr: ErrWorkItemNotFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pos, err := tt.ws.findWorkItemPosition(tt.id)
+
+			if tt.wantErr != nil && errors.Is(err, tt.wantErr) {
+				return
+			}
+
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if pos != tt.want {
+				t.Errorf("expected position %v, got %v", tt.want, pos)
+			}
+		})
+	}
+}
