@@ -24,6 +24,14 @@ type WorkItem struct {
 	Name string
 }
 
+var (
+	ErrInvalidColumn        = errors.New("invalid column")
+	ErrInvalidPosition      = errors.New("invalid work item position")
+	ErrInvalidWorkItemName  = errors.New("invalid work item name")
+	ErrItemIDMismatch       = errors.New("item ID mismatch")
+	ErrInvalidMoveDirection = errors.New("invalid move direction")
+)
+
 func (ws *Workspace) add(columnIdx int, name string) error {
 	if !validSliceAccess(columnIdx, len(ws.Columns)) {
 		return ErrInvalidColumn
@@ -99,6 +107,20 @@ func (ws *Workspace) moveToPosition(from, to WorkItemPosition) error {
 	}
 
 	return ws.moveWorkItemToPosition(from, to)
+}
+
+func (ws *Workspace) clone() Workspace {
+	columns := make([]Column, len(ws.Columns))
+	for i, col := range ws.Columns {
+		columns[i].Name = col.Name
+		for _, item := range col.WorkItems {
+			columns[i].WorkItems = append(columns[i].WorkItems, WorkItem{
+				ID:   item.ID,
+				Name: item.Name,
+			})
+		}
+	}
+	return Workspace{Columns: columns}
 }
 
 func (ws *Workspace) view() WorkspaceView {

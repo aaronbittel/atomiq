@@ -2,7 +2,6 @@ package model
 
 import (
 	"crypto/rand"
-	"errors"
 	"fmt"
 	"sync"
 )
@@ -31,19 +30,10 @@ const (
 	DirectionLeft  MoveDirection = "left"
 )
 
-var (
-	ErrInvalidColumn        = errors.New("invalid column")
-	ErrInvalidPosition      = errors.New("invalid work item position")
-	ErrInvalidWorkItemName  = errors.New("invalid work item name")
-	ErrItemIDMismatch       = errors.New("item ID mismatch")
-	ErrInvalidMoveDirection = errors.New("invalid move direction")
-)
-
 // NewWorkspaceModel creates a new NewWorkspaceModel.
-func NewWorkspaceModel(workspace Workspace) *WorkspaceModel {
-	// TODO: clone workspace
+func NewWorkspaceModel(ws Workspace) *WorkspaceModel {
 	return &WorkspaceModel{
-		workspace: workspace,
+		workspace: ws.clone(),
 	}
 }
 
@@ -86,21 +76,6 @@ func (wm *WorkspaceModel) WorkItemMoveDirection(id string, from WorkItemPosition
 	defer wm.mu.Unlock()
 
 	return wm.workspace.moveInDirection(id, from, direction)
-}
-
-// wm.mu must be locked.
-func (wm *WorkspaceModel) isValidFromPosition(pos WorkItemPosition) error {
-	columns := wm.workspace.Columns
-
-	if !validSliceAccess(pos.ColumnIdx, len(columns)) {
-		return errors.New("from column index out of bounds")
-	}
-
-	if !validSliceAccess(pos.ItemIdx, len(columns[pos.ColumnIdx].WorkItems)) {
-		return errors.New("from item index out of bounds")
-	}
-
-	return nil
 }
 
 // WorkItemPosition addresses a column plus an item or insertion slot.
