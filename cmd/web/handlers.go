@@ -7,7 +7,6 @@ import (
 	"html/template"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/aaronbittel/atomiq/internal/model"
 )
@@ -81,17 +80,17 @@ func (app *application) workItemPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	workItemName := strings.TrimSpace(r.PostForm.Get("name"))
-	if workItemName == "" {
-		app.sessionManager.Put(r.Context(), "columnErr", &ColumnErr{Idx: columnIdx, Msg: "work item must not be blank"})
-		http.Redirect(w, r, "/", http.StatusSeeOther)
-		return
-	}
+	workItemName := r.PostForm.Get("name")
 
 	if err := app.workspaceModel.WorkItemAdd(revision, columnIdx, workItemName); err != nil {
 		switch {
 		case errors.Is(err, model.ErrInvalidPosition):
 			app.clientError(w, http.StatusUnprocessableEntity)
+		case errors.Is(err, model.ErrInvalidWorkItemName):
+			app.sessionManager.Put(r.Context(), "columnErr", &ColumnErr{Idx: columnIdx, Msg: "work item must not be blank"})
+			http.Redirect(w, r, "/", http.StatusSeeOther)
+		case errors.Is(err, model.ErrRevisionConflict):
+			app.clientError(w, http.StatusConflict)
 		default:
 			app.serverError(w, r, err)
 		}
@@ -123,6 +122,8 @@ func (app *application) workItemDelete(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case errors.Is(err, model.ErrWorkItemNotFound):
 			app.clientError(w, http.StatusNotFound)
+		case errors.Is(err, model.ErrRevisionConflict):
+			app.clientError(w, http.StatusConflict)
 		default:
 			app.serverError(w, r, err)
 		}
@@ -158,8 +159,10 @@ func (app *application) workItemMove(w http.ResponseWriter, r *http.Request) {
 
 	if err := app.workspaceModel.WorkItemMoveDirection(revision, workItemID, direction); err != nil {
 		switch {
-		case errors.Is(err, model.ErrWorkItemNotFound), errors.Is(err, model.ErrInvalidMoveDirection):
-			app.clientError(w, http.StatusUnprocessableEntity)
+		case errors.Is(err, model.ErrWorkItemNotFound):
+			app.clientError(w, http.StatusNotFound)
+		case errors.Is(err, model.ErrRevisionConflict):
+			app.clientError(w, http.StatusConflict)
 		default:
 			app.serverError(w, r, err)
 		}
