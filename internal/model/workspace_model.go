@@ -60,22 +60,22 @@ func (wm *WorkspaceModel) WorkItemAdd(columnIdx int, name string) error {
 // The position must point at an existing item whose ID matches itemID. Invalid
 // positions return ErrInvalidPosition; stale positions that point at a different
 // item return ErrItemIDMismatch.
-func (wm *WorkspaceModel) WorkItemDelete(id string, pos WorkItemPosition) error {
+func (wm *WorkspaceModel) WorkItemDelete(itemID string, pos WorkItemPosition) error {
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
 
-	return wm.workspace.delete(id, pos)
+	return wm.workspace.delete(itemID, pos)
 }
 
 // WorkItemMoveDirection moves an item one visual step.
 //
 // The from position must point at the item currently identified by itemID. This
 // protects requests from acting on a stale position after the workspace changed.
-func (wm *WorkspaceModel) WorkItemMoveDirection(id string, from WorkItemPosition, direction MoveDirection) error {
+func (wm *WorkspaceModel) WorkItemMoveDirection(itemID string, from WorkItemPosition, direction MoveDirection) error {
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
 
-	return wm.workspace.moveInDirection(id, from, direction)
+	return wm.workspace.moveInDirection(itemID, from, direction)
 }
 
 // WorkItemPosition addresses a column plus an item or insertion slot.
@@ -96,11 +96,11 @@ type WorkItemPosition struct {
 // Within the same column, moving an item to its own insertion position or the
 // next insertion position is a no-op. For [A, B, C], moving B to index 1 or 2
 // leaves the column unchanged.
-func (wm *WorkspaceModel) WorkItemMovePosition(from, to WorkItemPosition) error {
+func (wm *WorkspaceModel) WorkItemMovePosition(itemID string, from, to WorkItemPosition) error {
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
 
-	return wm.workspace.moveToPosition(from, to)
+	return wm.workspace.moveToPosition(itemID, from, to)
 }
 
 // NewWorkItem creates a work item with a generated short ID.

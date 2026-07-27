@@ -115,7 +115,7 @@ func TestWorkItemMoveDirection(t *testing.T) {
 	})
 }
 
-func TestNewWorkspceModel(t *testing.T) {
+func TestNewWorkspaceModel(t *testing.T) {
 	t.Run("workspace model is cloned", func(t *testing.T) {
 		initial := workspace(column("Column", A))
 		wm := model.NewWorkspaceModel(initial)

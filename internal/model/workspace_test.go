@@ -135,25 +135,25 @@ func TestDelete(t *testing.T) {
 	t.Run("invalid", func(t *testing.T) {
 		tests := []struct {
 			name    string
-			itemID  string
+			id      string
 			pos     WorkItemPosition
 			wantErr error
 		}{
 			{
 				name:    "column index",
-				itemID:  A.ID,
+				id:      A.ID,
 				pos:     WorkItemPosition{ColumnIdx: 1},
 				wantErr: ErrInvalidPosition,
 			},
 			{
 				name:    "item index",
-				itemID:  A.ID,
+				id:      A.ID,
 				pos:     WorkItemPosition{ColumnIdx: 0, ItemIdx: 1},
 				wantErr: ErrInvalidPosition,
 			},
 			{
-				name:    "id mismatach",
-				itemID:  "wrong ID",
+				name:    "ID mismatch",
+				id:      "wrong ID",
 				pos:     WorkItemPosition{},
 				wantErr: ErrItemIDMismatch,
 			},
@@ -163,7 +163,7 @@ func TestDelete(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				ws := workspace(column("Column", A))
 
-				err := ws.delete(tt.itemID, tt.pos)
+				err := ws.delete(tt.id, tt.pos)
 				if !errors.Is(err, tt.wantErr) {
 					t.Fatalf("expected err %v, got %v", tt.wantErr, err)
 				}
@@ -343,6 +343,7 @@ func TestMoveToPosition(t *testing.T) {
 		tests := []struct {
 			name string
 			ws   Workspace
+			id   string
 			from WorkItemPosition
 			to   WorkItemPosition
 			want Workspace
@@ -353,6 +354,7 @@ func TestMoveToPosition(t *testing.T) {
 					column("Column 1", A, B),
 					column("Column 2", C),
 				),
+				id:   B.ID,
 				from: position(0, 1),
 				to:   position(1, 1),
 				want: workspace(
@@ -365,6 +367,7 @@ func TestMoveToPosition(t *testing.T) {
 				ws: workspace(
 					column("Column", A, B, C),
 				),
+				id:   C.ID,
 				from: position(0, 2),
 				to:   position(0, 0),
 				want: workspace(
@@ -376,6 +379,7 @@ func TestMoveToPosition(t *testing.T) {
 				ws: workspace(
 					column("Column", A, B, C),
 				),
+				id:   A.ID,
 				from: position(0, 0),
 				to:   position(0, 2),
 				want: workspace(
@@ -387,6 +391,7 @@ func TestMoveToPosition(t *testing.T) {
 				ws: workspace(
 					column("Column", A, B, C),
 				),
+				id:   A.ID,
 				from: position(0, 0),
 				to:   position(0, 0),
 				want: workspace(
@@ -398,6 +403,7 @@ func TestMoveToPosition(t *testing.T) {
 				ws: workspace(
 					column("Column", A, B, C),
 				),
+				id:   A.ID,
 				from: position(0, 0),
 				to:   position(0, 3),
 				want: workspace(
@@ -409,6 +415,7 @@ func TestMoveToPosition(t *testing.T) {
 				ws: workspace(
 					column("Column", A, B, C),
 				),
+				id:   C.ID,
 				from: position(0, 2),
 				to:   position(0, 0),
 				want: workspace(
@@ -419,7 +426,7 @@ func TestMoveToPosition(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				err := tt.ws.moveToPosition(tt.from, tt.to)
+				err := tt.ws.moveToPosition(tt.id, tt.from, tt.to)
 				if err != nil {
 					t.Fatalf("WorkItemMove() unexpected error: %v", err)
 				}
@@ -435,6 +442,7 @@ func TestMoveToPosition(t *testing.T) {
 		tests := []struct {
 			name    string
 			ws      Workspace
+			id      string
 			from    WorkItemPosition
 			to      WorkItemPosition
 			wantErr error
@@ -444,6 +452,7 @@ func TestMoveToPosition(t *testing.T) {
 				ws: workspace(
 					column("Column", A),
 				),
+				id:      A.ID,
 				from:    position(9, 0),
 				to:      position(0, 0),
 				wantErr: ErrInvalidPosition,
@@ -453,6 +462,7 @@ func TestMoveToPosition(t *testing.T) {
 				ws: workspace(
 					column("Column", A),
 				),
+				id:      A.ID,
 				from:    position(0, 0),
 				to:      position(9, 0),
 				wantErr: ErrInvalidPosition,
@@ -462,6 +472,7 @@ func TestMoveToPosition(t *testing.T) {
 				ws: workspace(
 					column("Column", A),
 				),
+				id:      A.ID,
 				from:    position(0, 2),
 				to:      position(0, 0),
 				wantErr: ErrInvalidPosition,
@@ -472,6 +483,7 @@ func TestMoveToPosition(t *testing.T) {
 					column("Column 1", A),
 					column("Column 2"),
 				),
+				id:      A.ID,
 				from:    position(0, 0),
 				to:      position(1, 2),
 				wantErr: ErrInvalidPosition,
@@ -481,15 +493,26 @@ func TestMoveToPosition(t *testing.T) {
 				ws: workspace(
 					column("Column", A),
 				),
+				id:      A.ID,
 				from:    position(9, 0),
 				to:      position(9, 0),
 				wantErr: ErrInvalidPosition,
+			},
+			{
+				name: "ID mismatch",
+				ws: workspace(
+					column("Column", A),
+				),
+				id:      B.ID,
+				from:    position(0, 0),
+				to:      position(0, 0),
+				wantErr: ErrItemIDMismatch,
 			},
 		}
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				err := tt.ws.moveToPosition(tt.from, tt.to)
+				err := tt.ws.moveToPosition(tt.id, tt.from, tt.to)
 
 				if !errors.Is(err, tt.wantErr) {
 					t.Fatalf("WorkItemMove() expected error: %v, got nil", tt.wantErr)

@@ -93,9 +93,14 @@ func (ws *Workspace) moveInDirection(id string, from WorkItemPosition, direction
 	return ws.moveWorkItemToPosition(from, to)
 }
 
-func (ws *Workspace) moveToPosition(from, to WorkItemPosition) error {
+func (ws *Workspace) moveToPosition(id string, from, to WorkItemPosition) error {
 	if err := ws.isValidFromPosition(from); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidPosition, err)
+	}
+
+	item := ws.Columns[from.ColumnIdx].WorkItems[from.ItemIdx]
+	if item.ID != id {
+		return ErrItemIDMismatch
 	}
 
 	if err := ws.isValidToPosition(to); err != nil {
