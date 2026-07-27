@@ -29,6 +29,7 @@ func TestWorkItemPost(t *testing.T) {
 		form := url.Values{}
 		form.Set("columnIdx", "0")
 		form.Set("name", "New Work Item")
+		form.Set("revision", "0")
 
 		resp := ts.postForm(t, "/work-item", form)
 		assertRedirect(t, resp, http.StatusSeeOther, "/")
@@ -57,6 +58,7 @@ func TestWorkItemPost(t *testing.T) {
 		form := url.Values{}
 		form.Set("columnIdx", "0")
 		form.Set("name", "   ")
+		form.Set("revision", "0")
 
 		resp := ts.postForm(t, "/work-item", form)
 		assertRedirect(t, resp, http.StatusSeeOther, "/")
@@ -124,6 +126,7 @@ func TestWorkItemDelete(t *testing.T) {
 
 		form := url.Values{}
 		form.Set("_method", "DELETE")
+		form.Set("revision", "0")
 
 		resp := ts.postForm(t, "/work-item/"+workItem1.ID, form)
 		assertRedirect(t, resp, http.StatusSeeOther, "/")
@@ -175,6 +178,7 @@ func TestWorkItemDelete(t *testing.T) {
 
 		form := url.Values{}
 		form.Set("_method", "DELETE")
+		form.Set("revision", "0")
 
 		resp := ts.postForm(t, "/work-item/"+makeInvalid(item.ID), form)
 

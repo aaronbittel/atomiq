@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/aaronbittel/atomiq/internal/model"
@@ -74,6 +75,12 @@ func (app *application) workItemPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	revision, err := strconv.ParseUint(r.PostForm.Get("revision"), 10, 64)
+	if err != nil {
+		app.clientError(w, http.StatusUnprocessableEntity)
+		return
+	}
+
 	workItemName := strings.TrimSpace(r.PostForm.Get("name"))
 	if workItemName == "" {
 		app.sessionManager.Put(r.Context(), "columnErr", &ColumnErr{Idx: columnIdx, Msg: "work item must not be blank"})
@@ -81,7 +88,7 @@ func (app *application) workItemPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := app.workspaceModel.WorkItemAdd(columnIdx, workItemName); err != nil {
+	if err := app.workspaceModel.WorkItemAdd(revision, columnIdx, workItemName); err != nil {
 		switch {
 		case errors.Is(err, model.ErrInvalidPosition):
 			app.clientError(w, http.StatusUnprocessableEntity)
@@ -106,7 +113,13 @@ func (app *application) workItemDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := app.workspaceModel.WorkItemDelete(itemID); err != nil {
+	revision, err := strconv.ParseUint(r.PostForm.Get("revision"), 10, 64)
+	if err != nil {
+		app.clientError(w, http.StatusUnprocessableEntity)
+		return
+	}
+
+	if err := app.workspaceModel.WorkItemDelete(revision, itemID); err != nil {
 		switch {
 		case errors.Is(err, model.ErrWorkItemNotFound):
 			app.clientError(w, http.StatusNotFound)
@@ -137,7 +150,13 @@ func (app *application) workItemMove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := app.workspaceModel.WorkItemMoveDirection(workItemID, direction); err != nil {
+	revision, err := strconv.ParseUint(r.PostForm.Get("revision"), 10, 64)
+	if err != nil {
+		app.clientError(w, http.StatusUnprocessableEntity)
+		return
+	}
+
+	if err := app.workspaceModel.WorkItemMoveDirection(revision, workItemID, direction); err != nil {
 		switch {
 		case errors.Is(err, model.ErrWorkItemNotFound), errors.Is(err, model.ErrInvalidMoveDirection):
 			app.clientError(w, http.StatusUnprocessableEntity)

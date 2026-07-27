@@ -10,6 +10,7 @@ var (
 	ErrInvalidWorkItemName  = errors.New("invalid work item name")
 	ErrInvalidMoveDirection = errors.New("invalid move direction")
 	ErrWorkItemNotFound     = errors.New("work item not found")
+	ErrRevisionConflict     = errors.New("workspace revision conflict")
 )
 
 func columnIdxErr(idx, length int) error {

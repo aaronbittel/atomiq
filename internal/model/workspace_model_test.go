@@ -34,7 +34,7 @@ func TestWorkItemAdd(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		wm := model.NewWorkspaceModel(workspace(column("Column")))
 
-		if err := wm.WorkItemAdd(0, "New item"); err != nil {
+		if err := wm.WorkItemAdd(0, 0, "New item"); err != nil {
 			t.Fatal(err)
 		}
 
@@ -52,7 +52,7 @@ func TestWorkItemAdd(t *testing.T) {
 
 		wantErr := model.ErrInvalidPosition
 
-		if err := wm.WorkItemAdd(1, "invalid column"); !errors.Is(err, wantErr) {
+		if err := wm.WorkItemAdd(0, 1, "invalid column"); !errors.Is(err, wantErr) {
 			t.Fatalf("expected %v, got %v", wantErr, err)
 		}
 	})
@@ -62,7 +62,7 @@ func TestWorkItemDelete(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		wm := model.NewWorkspaceModel(workspace(column("Column", A)))
 
-		if err := wm.WorkItemDelete(A.ID); err != nil {
+		if err := wm.WorkItemDelete(0, A.ID); err != nil {
 			t.Fatal(err)
 		}
 
@@ -78,7 +78,7 @@ func TestWorkItemDelete(t *testing.T) {
 		wm := model.NewWorkspaceModel(workspace(column("Column", A)))
 
 		wantErr := model.ErrWorkItemNotFound
-		err := wm.WorkItemDelete(B.ID)
+		err := wm.WorkItemDelete(0, B.ID)
 
 		if !errors.Is(err, wantErr) {
 			t.Fatalf("expected %v, got %v", wantErr, err)
@@ -90,7 +90,7 @@ func TestWorkItemMoveDirection(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		wm := model.NewWorkspaceModel(workspace(column("Column", A, B)))
 
-		if err := wm.WorkItemMoveDirection(B.ID, model.DirectionUp); err != nil {
+		if err := wm.WorkItemMoveDirection(0, B.ID, model.DirectionUp); err != nil {
 			t.Fatal(err)
 		}
 
