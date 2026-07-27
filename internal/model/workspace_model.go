@@ -52,8 +52,16 @@ func (wm *WorkspaceModel) WorkItemAdd(columnIdx int, name string) error {
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
 
-	_, err := wm.workspace.add(columnIdx, name)
-	return err
+	updated, err := wm.workspace.add(columnIdx, name)
+	if err != nil {
+		return err
+	}
+
+	if updated {
+		wm.workspace.revision += 1
+	}
+
+	return nil
 }
 
 // WorkItemDelete removes the item with itemID.
@@ -61,8 +69,16 @@ func (wm *WorkspaceModel) WorkItemDelete(itemID string) error {
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
 
-	_, err := wm.workspace.delete(itemID)
-	return err
+	updated, err := wm.workspace.delete(itemID)
+	if err != nil {
+		return err
+	}
+
+	if updated {
+		wm.workspace.revision += 1
+	}
+
+	return nil
 }
 
 // WorkItemMoveDirection moves an item one visual step.
@@ -70,8 +86,16 @@ func (wm *WorkspaceModel) WorkItemMoveDirection(itemID string, direction MoveDir
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
 
-	_, err := wm.workspace.moveInDirection(itemID, direction)
-	return err
+	updated, err := wm.workspace.moveInDirection(itemID, direction)
+	if err != nil {
+		return err
+	}
+
+	if updated {
+		wm.workspace.revision += 1
+	}
+
+	return nil
 }
 
 // WorkItemMovePosition moves an item to an insertion position.
@@ -83,8 +107,16 @@ func (wm *WorkspaceModel) WorkItemMovePosition(itemID string, to WorkItemInserti
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
 
-	_, err := wm.workspace.moveToPosition(itemID, to)
-	return err
+	updated, err := wm.workspace.moveToPosition(itemID, to)
+	if err != nil {
+		return err
+	}
+
+	if updated {
+		wm.workspace.revision += 1
+	}
+
+	return nil
 }
 
 // NewWorkItem creates a work item with a generated short ID.
