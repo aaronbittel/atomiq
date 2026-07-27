@@ -1,22 +1,11 @@
 package model
 
 import (
-	"crypto/rand"
 	"errors"
 	"fmt"
 	"slices"
 	"strings"
-	"sync"
 )
-
-// WorkspaceModel owns the mutable workspace state.
-//
-// Use its methods instead of mutating Workspace directly when handling
-// concurrent requests.
-type WorkspaceModel struct {
-	mu        sync.RWMutex
-	workspace Workspace
-}
 
 // Workspace contains the columns and work items in one work context.
 type Workspace struct {
@@ -35,127 +24,57 @@ type WorkItem struct {
 	Name string
 }
 
-// MoveDirection describes a visual move in the rendered workspace.
-// Up and down move within a column; left and right move to the end of the
-// neighboring column.
-type MoveDirection string
-
-const (
-	// WorkItemIDLength is the number of characters generated for work item IDs.
-	WorkItemIDLength = 8
-
-	DirectionUp    MoveDirection = "up"
-	DirectionDown  MoveDirection = "down"
-	DirectionRight MoveDirection = "right"
-	DirectionLeft  MoveDirection = "left"
-)
-
-// NewWorkspaceModel creates a new NewWorkspaceModel.
-func NewWorkspaceModel(workspace Workspace) *WorkspaceModel {
-	return &WorkspaceModel{
-		workspace: workspace,
-	}
-}
-
-// CurrentWorkspaceView returns a snapshot of the current workspace.
-// The returned slices do not share backing arrays with the model, so callers
-// can render or inspect the snapshot without holding the model lock.
-func (wm *WorkspaceModel) CurrentWorkspaceView() WorkspaceView {
-	wm.mu.RLock()
-	defer wm.mu.RUnlock()
-
-	columns := make([]ColumnView, len(wm.workspace.Columns))
-	for i, col := range wm.workspace.Columns {
-		columns[i].Name = col.Name
-		for _, item := range col.WorkItems {
-			columns[i].WorkItems = append(columns[i].WorkItems, WorkItemView{
-				ID:   item.ID,
-				Name: item.Name,
-			})
-		}
-	}
-
-	return WorkspaceView{Columns: columns}
-}
-
-var (
-	ErrInvalidColumn        = errors.New("invalid column")
-	ErrInvalidPosition      = errors.New("invalid work item position")
-	ErrInvalidWorkItemName  = errors.New("invalid work item name")
-	ErrItemIDMismatch       = errors.New("item ID mismatch")
-	ErrInvalidMoveDirection = errors.New("invalid move direction")
-)
-
-// WorkItemAdd trims and appends a new item to the selected column.
-func (wm *WorkspaceModel) WorkItemAdd(columnIdx int, workItemName string) error {
-	wm.mu.Lock()
-	defer wm.mu.Unlock()
-
-	if !validSliceAccess(columnIdx, len(wm.workspace.Columns)) {
+func (ws *Workspace) add(columnIdx int, name string) error {
+	if !validSliceAccess(columnIdx, len(ws.Columns)) {
 		return ErrInvalidColumn
 	}
 
-	workItemName = strings.TrimSpace(workItemName)
-	if workItemName == "" {
+	name = strings.TrimSpace(name)
+	if name == "" {
 		return ErrInvalidWorkItemName
 	}
 
-	wm.workspace.Columns[columnIdx].WorkItems = append(wm.workspace.Columns[columnIdx].WorkItems, NewWorkItem(workItemName))
+	ws.Columns[columnIdx].WorkItems = append(ws.Columns[columnIdx].WorkItems, NewWorkItem(name))
+
 	return nil
 }
 
-// WorkItemDelete removes the item at pos.
-//
-// The position must point at an existing item whose ID matches itemID. Invalid
-// positions return ErrInvalidPosition; stale positions that point at a different
-// item return ErrItemIDMismatch.
-func (wm *WorkspaceModel) WorkItemDelete(itemID string, pos WorkItemPosition) error {
-	wm.mu.Lock()
-	defer wm.mu.Unlock()
-
-	columns := wm.workspace.Columns
-	if !validSliceAccess(pos.ColumnIdx, len(columns)) {
+func (ws *Workspace) delete(id string, pos WorkItemPosition) error {
+	if !validSliceAccess(pos.ColumnIdx, len(ws.Columns)) {
 		return fmt.Errorf("%w: column index out of bounds", ErrInvalidPosition)
 	}
-	items := columns[pos.ColumnIdx].WorkItems
+	items := ws.Columns[pos.ColumnIdx].WorkItems
 	if !validSliceAccess(pos.ItemIdx, len(items)) {
 		return fmt.Errorf("%w: item index out of bounds", ErrInvalidPosition)
 	}
 
 	item := items[pos.ItemIdx]
-	if item.ID != itemID {
+	if item.ID != id {
 		return ErrItemIDMismatch
 	}
 
 	items = slices.Delete(items, pos.ItemIdx, pos.ItemIdx+1)
-	wm.workspace.Columns[pos.ColumnIdx].WorkItems = items
+	ws.Columns[pos.ColumnIdx].WorkItems = items
 
 	return nil
 }
 
-// WorkItemMoveDirection moves an item one visual step.
-//
-// The from position must point at the item currently identified by itemID. This
-// protects requests from acting on a stale position after the workspace changed.
-func (wm *WorkspaceModel) WorkItemMoveDirection(itemID string, from WorkItemPosition, direction MoveDirection) error {
-	wm.mu.Lock()
-	defer wm.mu.Unlock()
-
-	if err := wm.isValidFromPosition(from); err != nil {
+func (ws *Workspace) moveInDirection(id string, from WorkItemPosition, direction MoveDirection) error {
+	if err := ws.isValidFromPosition(from); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidPosition, err)
 	}
 
-	item := wm.workspace.Columns[from.ColumnIdx].WorkItems[from.ItemIdx]
-	if itemID != item.ID {
-		return fmt.Errorf("%w: expected %q, got %q", ErrItemIDMismatch, itemID, item.ID)
+	item := ws.Columns[from.ColumnIdx].WorkItems[from.ItemIdx]
+	if id != item.ID {
+		return fmt.Errorf("%w: expected %q, got %q", ErrItemIDMismatch, id, item.ID)
 	}
 
-	to, err := wm.getToWorkItemPosition(from, direction)
+	to, err := ws.getToWorkItemPosition(from, direction)
 	if err != nil {
 		return err
 	}
 
-	if err := wm.isValidToPosition(to); err != nil {
+	if err := ws.isValidToPosition(to); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidPosition, err)
 	}
 
@@ -163,66 +82,15 @@ func (wm *WorkspaceModel) WorkItemMoveDirection(itemID string, from WorkItemPosi
 		return nil
 	}
 
-	return wm.moveWorkItemToPosition(from, to)
+	return ws.moveWorkItemToPosition(from, to)
 }
 
-// wm.mu must be locked.
-func (wm *WorkspaceModel) isValidFromPosition(pos WorkItemPosition) error {
-	columns := wm.workspace.Columns
-
-	if !validSliceAccess(pos.ColumnIdx, len(columns)) {
-		return errors.New("from column index out of bounds")
-	}
-
-	if !validSliceAccess(pos.ItemIdx, len(columns[pos.ColumnIdx].WorkItems)) {
-		return errors.New("from item index out of bounds")
-	}
-
-	return nil
-}
-
-// wm.mu must be locked.
-func (wm *WorkspaceModel) isValidToPosition(pos WorkItemPosition) error {
-	columns := wm.workspace.Columns
-
-	if !validSliceAccess(pos.ColumnIdx, len(columns)) {
-		return errors.New("to column index out of bounds")
-	}
-
-	if !validSliceAccess(pos.ItemIdx, len(columns[pos.ColumnIdx].WorkItems)+1) {
-		return errors.New("to item index out of bounds")
-	}
-
-	return nil
-}
-
-// WorkItemPosition addresses a column plus an item or insertion slot.
-type WorkItemPosition struct {
-	ColumnIdx int
-	// ItemIdx is an insertion index.
-	//
-	// In a column [A, B, C], index 0 inserts before A, index 1 inserts between
-	// A and B, and index 3 appends after C.
-	ItemIdx int
-}
-
-// WorkItemMovePosition moves an item to an insertion position.
-//
-// The from position must point at an existing item. The to position may point
-// between items or to len(column.WorkItems), which means append.
-//
-// Within the same column, moving an item to its own insertion position or the
-// next insertion position is a no-op. For [A, B, C], moving B to index 1 or 2
-// leaves the column unchanged.
-func (wm *WorkspaceModel) WorkItemMovePosition(from, to WorkItemPosition) error {
-	wm.mu.Lock()
-	defer wm.mu.Unlock()
-
-	if err := wm.isValidFromPosition(from); err != nil {
+func (ws *Workspace) moveToPosition(from, to WorkItemPosition) error {
+	if err := ws.isValidFromPosition(from); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidPosition, err)
 	}
 
-	if err := wm.isValidToPosition(to); err != nil {
+	if err := ws.isValidToPosition(to); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidPosition, err)
 	}
 
@@ -230,21 +98,33 @@ func (wm *WorkspaceModel) WorkItemMovePosition(from, to WorkItemPosition) error 
 		return nil
 	}
 
-	return wm.moveWorkItemToPosition(from, to)
+	return ws.moveWorkItemToPosition(from, to)
 }
 
-// wm.mu must be locked.
-func (wm *WorkspaceModel) moveWorkItemToPosition(from, to WorkItemPosition) error {
+func (ws *Workspace) view() WorkspaceView {
+	columnViews := make([]ColumnView, len(ws.Columns))
+	for i, col := range ws.Columns {
+		columnViews[i].Name = col.Name
+		for _, wi := range col.WorkItems {
+			columnViews[i].WorkItems = append(columnViews[i].WorkItems, WorkItemView{
+				ID:   wi.ID,
+				Name: wi.Name,
+			})
+		}
+	}
+	return WorkspaceView{Columns: columnViews}
+}
+
+func (ws *Workspace) moveWorkItemToPosition(from, to WorkItemPosition) error {
 	if from.ColumnIdx == to.ColumnIdx {
-		return wm.moveWorkItemWithinColumn(from.ColumnIdx, from.ItemIdx, to.ItemIdx)
+		return ws.moveWorkItemWithinColumn(from.ColumnIdx, from.ItemIdx, to.ItemIdx)
 	}
 
-	return wm.moveWorkItemBetweenColumns(from, to)
+	return ws.moveWorkItemBetweenColumns(from, to)
 }
 
-// wm.mu must be locked.
-func (wm *WorkspaceModel) moveWorkItemWithinColumn(columnIdx, fromIdx, toIdx int) error {
-	items := wm.workspace.Columns[columnIdx].WorkItems
+func (ws *Workspace) moveWorkItemWithinColumn(columnIdx, fromIdx, toIdx int) error {
+	items := ws.Columns[columnIdx].WorkItems
 	item := items[fromIdx]
 
 	items = slices.Delete(items, fromIdx, fromIdx+1)
@@ -255,36 +135,26 @@ func (wm *WorkspaceModel) moveWorkItemWithinColumn(columnIdx, fromIdx, toIdx int
 	}
 	items = slices.Insert(items, toIdx, item)
 
-	wm.workspace.Columns[columnIdx].WorkItems = items
+	ws.Columns[columnIdx].WorkItems = items
 
 	return nil
 }
 
-// wm.mu must be locked.
-func (wm *WorkspaceModel) moveWorkItemBetweenColumns(from, to WorkItemPosition) error {
-	fromItems := wm.workspace.Columns[from.ColumnIdx].WorkItems
-	toItems := wm.workspace.Columns[to.ColumnIdx].WorkItems
+func (ws *Workspace) moveWorkItemBetweenColumns(from, to WorkItemPosition) error {
+	fromItems := ws.Columns[from.ColumnIdx].WorkItems
+	toItems := ws.Columns[to.ColumnIdx].WorkItems
 
 	item := fromItems[from.ItemIdx]
 	fromItems = slices.Delete(fromItems, from.ItemIdx, from.ItemIdx+1)
 	toItems = slices.Insert(toItems, to.ItemIdx, item)
 
-	wm.workspace.Columns[from.ColumnIdx].WorkItems = fromItems
-	wm.workspace.Columns[to.ColumnIdx].WorkItems = toItems
+	ws.Columns[from.ColumnIdx].WorkItems = fromItems
+	ws.Columns[to.ColumnIdx].WorkItems = toItems
 
 	return nil
 }
 
-// NewWorkItem creates a work item with a generated short ID.
-func NewWorkItem(name string) WorkItem {
-	return WorkItem{
-		ID:   rand.Text()[:WorkItemIDLength],
-		Name: name,
-	}
-}
-
-// wm.mu must be locked.
-func (wm *WorkspaceModel) getToWorkItemPosition(from WorkItemPosition, direction MoveDirection) (WorkItemPosition, error) {
+func (ws *Workspace) getToWorkItemPosition(from WorkItemPosition, direction MoveDirection) (WorkItemPosition, error) {
 	var to WorkItemPosition
 	switch direction {
 	case DirectionUp:
@@ -296,7 +166,7 @@ func (wm *WorkspaceModel) getToWorkItemPosition(from WorkItemPosition, direction
 			ItemIdx:   from.ItemIdx - 1,
 		}
 	case DirectionDown:
-		items := wm.workspace.Columns[from.ColumnIdx].WorkItems
+		items := ws.Columns[from.ColumnIdx].WorkItems
 		if from.ItemIdx == len(items)-1 {
 			return from, nil
 		}
@@ -305,7 +175,7 @@ func (wm *WorkspaceModel) getToWorkItemPosition(from WorkItemPosition, direction
 			ItemIdx:   from.ItemIdx + 2,
 		}
 	case DirectionRight:
-		columns := wm.workspace.Columns
+		columns := ws.Columns
 		if from.ColumnIdx == len(columns)-1 {
 			return from, nil
 		}
@@ -321,7 +191,7 @@ func (wm *WorkspaceModel) getToWorkItemPosition(from WorkItemPosition, direction
 			return from, nil
 		}
 
-		columns := wm.workspace.Columns
+		columns := ws.Columns
 		toColumnIdx := from.ColumnIdx - 1
 
 		to = WorkItemPosition{
@@ -335,22 +205,30 @@ func (wm *WorkspaceModel) getToWorkItemPosition(from WorkItemPosition, direction
 	return to, nil
 }
 
-func validSliceAccess(idx, length int) bool {
-	return idx >= 0 && idx < length
+func (ws *Workspace) isValidFromPosition(pos WorkItemPosition) error {
+	if !validSliceAccess(pos.ColumnIdx, len(ws.Columns)) {
+		return errors.New("from column index out of bounds")
+	}
+
+	if !validSliceAccess(pos.ItemIdx, len(ws.Columns[pos.ColumnIdx].WorkItems)) {
+		return errors.New("from item index out of bounds")
+	}
+
+	return nil
 }
 
-// ParseMoveDirection converts form input into a MoveDirection.
-func ParseMoveDirection(s string) (MoveDirection, error) {
-	switch s {
-	case "up":
-		return DirectionUp, nil
-	case "down":
-		return DirectionDown, nil
-	case "right":
-		return DirectionRight, nil
-	case "left":
-		return DirectionLeft, nil
-	default:
-		return "", fmt.Errorf("%w: %q", ErrInvalidMoveDirection, s)
+func (ws *Workspace) isValidToPosition(pos WorkItemPosition) error {
+	if !validSliceAccess(pos.ColumnIdx, len(ws.Columns)) {
+		return errors.New("to column index out of bounds")
 	}
+
+	if !validSliceAccess(pos.ItemIdx, len(ws.Columns[pos.ColumnIdx].WorkItems)+1) {
+		return errors.New("to item index out of bounds")
+	}
+
+	return nil
+}
+
+func validSliceAccess(idx, length int) bool {
+	return idx >= 0 && idx < length
 }

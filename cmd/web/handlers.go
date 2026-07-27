@@ -44,7 +44,7 @@ func (app *application) workspaceView(w http.ResponseWriter, r *http.Request) {
 	t.Option("missingkey=error")
 
 	data := workspaceRenderView{
-		Ws:             app.workspaceModel.CurrentWorkspaceView(),
+		Ws:             app.workspaceModel.WorkspaceView(),
 		MoveDirections: moveDirectionViews,
 	}
 

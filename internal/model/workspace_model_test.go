@@ -27,7 +27,7 @@ func TestWorkItemMoveDirection(t *testing.T) {
 					t.Fatal(err)
 				}
 
-				got := wm.CurrentWorkspaceView()
+				got := wm.WorkspaceView()
 
 				if diff := cmp.Diff(want, got); diff != "" {
 					t.Errorf("workspace mismatch (-want +got):\n%s", diff)
@@ -107,7 +107,7 @@ func TestWorkItemMoveDirection(t *testing.T) {
 					t.Fatal(err)
 				}
 
-				got := wm.CurrentWorkspaceView()
+				got := wm.WorkspaceView()
 
 				if diff := cmp.Diff(tt.want, got); diff != "" {
 					t.Errorf("workspace mismatch (-want +got):\n%s", diff)
@@ -272,7 +272,7 @@ func TestWorkItemMovePosition(t *testing.T) {
 					t.Fatalf("WorkItemMove() unexpected error: %v", err)
 				}
 
-				got := wm.CurrentWorkspaceView()
+				got := wm.WorkspaceView()
 
 				if diff := cmp.Diff(tt.want, got); diff != "" {
 					t.Errorf("workspace mismatch (-want +got):\n%s", diff)
@@ -420,7 +420,7 @@ func TestWorkItemDelete(t *testing.T) {
 					t.Fatal(err)
 				}
 
-				got := wm.CurrentWorkspaceView()
+				got := wm.WorkspaceView()
 
 				if diff := cmp.Diff(tt.want, got); diff != "" {
 					t.Errorf("workspace mismatch (-want +got):\n%s", diff)
@@ -467,7 +467,7 @@ func TestWorkItemDelete(t *testing.T) {
 				}
 
 				want := workspaceView(columnView("Column", itemView(A)))
-				got := wm.CurrentWorkspaceView()
+				got := wm.WorkspaceView()
 
 				if diff := cmp.Diff(want, got); diff != "" {
 					t.Errorf("workspace mismatch (-want +got):\n%s", diff)
@@ -486,7 +486,7 @@ func TestWorkItemAdd(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		got := wm.CurrentWorkspaceView()
+		got := wm.WorkspaceView()
 		items := got.Columns[0].WorkItems
 
 		if len(items) != 2 {
@@ -512,7 +512,7 @@ func TestWorkItemAdd(t *testing.T) {
 		}
 
 		want := workspaceView(columnView("Column", itemView(A)))
-		got := wm.CurrentWorkspaceView()
+		got := wm.WorkspaceView()
 
 		if diff := cmp.Diff(want, got); diff != "" {
 			t.Errorf("workspace mismatch (-want +got):\n%s", diff)
