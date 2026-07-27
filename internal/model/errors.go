@@ -22,16 +22,6 @@ func columnIdxErr(idx, length int) error {
 	)
 }
 
-func itemIdxErr(columnIdx, itemIdx, length int) error {
-	return fmt.Errorf(
-		"%w: item index %d out of bounds for column %d with %d items",
-		ErrInvalidPosition,
-		itemIdx,
-		columnIdx,
-		length,
-	)
-}
-
 func itemInsertionIdxErr(columnIdx, insertIdx, length int) error {
 	return fmt.Errorf(
 		"%w: item insertion index %d out of bounds for column %d with %d items",

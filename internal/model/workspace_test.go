@@ -154,7 +154,6 @@ func TestDelete(t *testing.T) {
 		tests := []struct {
 			name    string
 			id      string
-			pos     workItemPosition
 			wantErr error
 		}{
 			{
@@ -216,7 +215,6 @@ func TestMoveInDirection(t *testing.T) {
 			name      string
 			ws        Workspace
 			id        string
-			from      workItemPosition
 			direction MoveDirection
 			want      Workspace
 		}{
@@ -226,7 +224,6 @@ func TestMoveInDirection(t *testing.T) {
 					column("Column", A, B),
 				),
 				id:        B.ID,
-				from:      workItemPosition{ColumnIdx: 0, ItemIdx: 1},
 				direction: DirectionUp,
 				want: workspace(
 					column("Column", B, A),
@@ -238,7 +235,6 @@ func TestMoveInDirection(t *testing.T) {
 					column("Column", A, B),
 				),
 				id:        A.ID,
-				from:      workItemPosition{ColumnIdx: 0, ItemIdx: 0},
 				direction: DirectionDown,
 				want: workspace(
 					column("Column", B, A),
@@ -251,7 +247,6 @@ func TestMoveInDirection(t *testing.T) {
 					column("Column 2", C),
 				),
 				id:        A.ID,
-				from:      workItemPosition{ColumnIdx: 0, ItemIdx: 0},
 				direction: DirectionRight,
 				want: workspace(
 					column("Column 1", B),
@@ -265,7 +260,6 @@ func TestMoveInDirection(t *testing.T) {
 					column("Column 2", A, B),
 				),
 				id:        A.ID,
-				from:      workItemPosition{ColumnIdx: 1, ItemIdx: 0},
 				direction: DirectionLeft,
 				want: workspace(
 					column("Column 1", C, A),
@@ -297,7 +291,6 @@ func TestMoveInDirection(t *testing.T) {
 			name      string
 			ws        Workspace
 			id        string
-			from      workItemPosition
 			direction MoveDirection
 			wantErr   error
 		}{
@@ -307,7 +300,6 @@ func TestMoveInDirection(t *testing.T) {
 					column("Column", A),
 				),
 				id:        B.ID,
-				from:      workItemPosition{},
 				direction: DirectionUp,
 				wantErr:   ErrWorkItemNotFound,
 			},
@@ -317,7 +309,6 @@ func TestMoveInDirection(t *testing.T) {
 					column("Column", A),
 				),
 				id:        A.ID,
-				from:      workItemPosition{},
 				direction: MoveDirection("invalid"),
 				wantErr:   ErrInvalidMoveDirection,
 			},
@@ -436,7 +427,7 @@ func TestMoveToPosition(t *testing.T) {
 				}
 
 				if tt.wantUpdated != updated {
-					t.Fatalf("expecte updated to be %v, got %v", tt.wantUpdated, updated)
+					t.Fatalf("expected updated to be %v, got %v", tt.wantUpdated, updated)
 				}
 
 				if diff := cmp.Diff(tt.want, tt.ws, cmp.AllowUnexported(Workspace{})); diff != "" {
@@ -498,7 +489,7 @@ func TestMoveToPosition(t *testing.T) {
 				updated, err := tt.ws.moveToPosition(tt.id, tt.insertPoint)
 
 				if !errors.Is(err, tt.wantErr) {
-					t.Fatalf("WorkItemMove() expected error: %v, got nil", tt.wantErr)
+					t.Fatalf("expected error %v, got %v", tt.wantErr, err)
 				}
 
 				if updated {
@@ -559,5 +550,16 @@ func TestFindWorkItemPosition(t *testing.T) {
 				t.Errorf("expected position %v, got %v", tt.want, pos)
 			}
 		})
+	}
+}
+
+func TestView(t *testing.T) {
+	ws := workspace(column("Column", A))
+	ws.revision = 42
+
+	got := ws.view()
+
+	if got.Revision != 42 {
+		t.Fatalf("expected revision 42, got %d", got.Revision)
 	}
 }

@@ -10,45 +10,68 @@ import (
 )
 
 func TestMethodOverride(t *testing.T) {
-	form := url.Values{}
-	form.Set("_method", "DELETE")
+	for _, method := range []string{http.MethodDelete, http.MethodPatch} {
+		t.Run(method, func(t *testing.T) {
+			form := url.Values{}
+			form.Set("_method", method)
 
-	req := httptest.NewRequest(
-		http.MethodPost,
-		"/work-item/abcdefgh",
-		strings.NewReader(form.Encode()),
-	)
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			req := httptest.NewRequest(
+				http.MethodPost,
+				"/work-item/abcdefgh",
+				strings.NewReader(form.Encode()),
+			)
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	rr := httptest.NewRecorder()
+			rr := httptest.NewRecorder()
 
-	var gotMethod string
-	called := false
+			var got string
+			called := false
 
-	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		called = true
-		gotMethod = r.Method
-		w.WriteHeader(http.StatusOK)
+			next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				called = true
+				got = r.Method
+				w.WriteHeader(http.StatusOK)
+			})
+
+			app := application{logger: slog.New(slog.DiscardHandler)}
+
+			app.methodOverride(next).ServeHTTP(rr, req)
+
+			if !called {
+				t.Fatal("next handler was not called")
+			}
+
+			if got != method {
+				t.Fatalf("got method %q, want %q", got, method)
+			}
+
+			assertStatusCode(t, http.StatusOK, rr.Code)
+		})
+	}
+
+	t.Run("get", func(t *testing.T) {
+		form := url.Values{}
+		form.Set("_method", "GET")
+
+		req := httptest.NewRequest(
+			http.MethodPost,
+			"/work-item/abcdefgh",
+			strings.NewReader(form.Encode()),
+		)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		rr := httptest.NewRecorder()
+
+		next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+
+		app := application{logger: slog.New(slog.DiscardHandler)}
+		app.methodOverride(next).ServeHTTP(rr, req)
+
+		assertStatusCode(t, http.StatusUnprocessableEntity, rr.Code)
 	})
-
-	app := application{logger: slog.New(slog.DiscardHandler)}
-
-	app.methodOverride(next).ServeHTTP(rr, req)
-
-	if !called {
-		t.Fatal("next handler was not called")
-	}
-
-	if gotMethod != http.MethodDelete {
-		t.Fatalf("got method %q, want %q", gotMethod, http.MethodDelete)
-	}
-
-	if rr.Code != http.StatusOK {
-		t.Fatalf("got status %d, want %d", rr.Code, http.StatusOK)
-	}
 }
 
-func TestMethodOverrideKeepsPostWithoutDeleteOverride(t *testing.T) {
+func TestMethodOverrideKeepsPostWithoutOverride(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/work-item", strings.NewReader("name=test"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 

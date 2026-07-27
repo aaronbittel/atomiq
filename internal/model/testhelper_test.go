@@ -9,9 +9,7 @@ func workspace(columns ...Column) Workspace {
 func column(name string, items ...WorkItem) Column {
 	result := []WorkItem{}
 
-	for _, item := range items {
-		result = append(result, item)
-	}
+	result = append(result, items...)
 
 	return Column{
 		Name:      name,
@@ -37,31 +35,5 @@ func insertPoint(columnIdx, itemIdx int) WorkItemInsertionPoint {
 	return WorkItemInsertionPoint{
 		ColumnIdx: columnIdx,
 		ItemIdx:   itemIdx,
-	}
-}
-
-func workspaceView(columns ...ColumnView) WorkspaceView {
-	return WorkspaceView{
-		Columns: columns,
-	}
-}
-
-func columnView(name string, items ...WorkItemView) ColumnView {
-	var result []WorkItemView
-
-	for _, item := range items {
-		result = append(result, item)
-	}
-
-	return ColumnView{
-		Name:      name,
-		WorkItems: result,
-	}
-}
-
-func itemView(item WorkItem) WorkItemView {
-	return WorkItemView{
-		ID:   item.ID,
-		Name: item.Name,
 	}
 }

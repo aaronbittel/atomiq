@@ -6,10 +6,12 @@ import (
 	"sync"
 )
 
-// WorkspaceModel owns the mutable workspace state.
+// WorkspaceModel owns and synchronizes the mutable workspace state.
 //
-// Use its methods instead of mutating Workspace directly when handling
-// concurrent requests.
+// Mutation methods use optimistic concurrency control. The supplied expected revision
+// must match the current workspace revision, otherwise they return ErrRevisionConflict.
+// The revision is incremented only when an operation changes the workspace; successful
+// no-ops leave it unchanged.
 type WorkspaceModel struct {
 	mu        sync.RWMutex
 	workspace Workspace
@@ -30,16 +32,18 @@ const (
 	DirectionLeft  MoveDirection = "left"
 )
 
-// NewWorkspaceModel creates a new NewWorkspaceModel.
+// NewWorkspaceModel creates a WorkspaceModel that owns a deep copy of ws.
 func NewWorkspaceModel(ws Workspace) *WorkspaceModel {
 	return &WorkspaceModel{
 		workspace: ws.clone(),
 	}
 }
 
-// WorkspaceView returns a snapshot of the current workspace.
-// The returned slices do not share backing arrays with the model, so callers
-// can render or inspect the snapshot without holding the model lock.
+// WorkspaceView returns a detached snapshot of the current workspace, including the
+// revision required for subsequent mutation requests.
+//
+// The returned slices do not share backing arrays with the model, so callers may render
+// or inspect the snapshot without holding the model lock.
 func (wm *WorkspaceModel) WorkspaceView() WorkspaceView {
 	wm.mu.RLock()
 	defer wm.mu.RUnlock()
@@ -48,6 +52,9 @@ func (wm *WorkspaceModel) WorkspaceView() WorkspaceView {
 }
 
 // WorkItemAdd trims and appends a new item to the selected column.
+//
+// It returns ErrRevisionConflict when expectedRevision does not match the current
+// revision. A successful addition increments the revision.
 func (wm *WorkspaceModel) WorkItemAdd(expectedRevision uint64, columnIdx int, name string) error {
 	return wm.mutate(expectedRevision, func(w *Workspace) (bool, error) {
 		return w.add(columnIdx, name)
@@ -55,6 +62,9 @@ func (wm *WorkspaceModel) WorkItemAdd(expectedRevision uint64, columnIdx int, na
 }
 
 // WorkItemDelete removes the item with itemID.
+//
+// It returns ErrRevisionConflict when expectedRevision does not match the current
+// revision. A successful deletion increments the revision.
 func (wm *WorkspaceModel) WorkItemDelete(expectedRevision uint64, itemID string) error {
 	return wm.mutate(expectedRevision, func(w *Workspace) (bool, error) {
 		return w.delete(itemID)
@@ -62,6 +72,9 @@ func (wm *WorkspaceModel) WorkItemDelete(expectedRevision uint64, itemID string)
 }
 
 // WorkItemMoveDirection moves an item one visual step.
+//
+// Moves that are blocked by a workspace boundary are successful no-ops and leave the
+// revision unchanged.
 func (wm *WorkspaceModel) WorkItemMoveDirection(expectedRevision uint64, itemID string, direction MoveDirection) error {
 	return wm.mutate(expectedRevision, func(w *Workspace) (bool, error) {
 		return w.moveInDirection(itemID, direction)
@@ -70,9 +83,9 @@ func (wm *WorkspaceModel) WorkItemMoveDirection(expectedRevision uint64, itemID 
 
 // WorkItemMovePosition moves an item to an insertion position.
 //
-// Within the same column, moving an item to its own insertion position or the
-// next insertion position is a no-op. For [A, B, C], moving B to index 1 or 2
-// leaves the column unchanged.
+// Within the same column, moving an item to its current insertion position or the
+// following insertion position is a no-op. For [A, B, C], moving B to index 1 or 2
+// leaves the column and revision unchanged.
 func (wm *WorkspaceModel) WorkItemMovePosition(expectedRevision uint64, itemID string, insertPoint WorkItemInsertionPoint) error {
 	return wm.mutate(expectedRevision, func(w *Workspace) (bool, error) {
 		return w.moveToPosition(itemID, insertPoint)

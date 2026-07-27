@@ -11,9 +11,7 @@ func workspace(columns ...model.Column) model.Workspace {
 func column(name string, items ...model.WorkItem) model.Column {
 	result := []model.WorkItem{}
 
-	for _, item := range items {
-		result = append(result, item)
-	}
+	result = append(result, items...)
 
 	return model.Column{
 		Name:      name,
@@ -38,9 +36,7 @@ func workspaceView(revision uint64, columns ...model.ColumnView) model.Workspace
 func columnView(name string, items ...model.WorkItemView) model.ColumnView {
 	var result []model.WorkItemView
 
-	for _, item := range items {
-		result = append(result, item)
-	}
+	result = append(result, items...)
 
 	return model.ColumnView{
 		Name:      name,
@@ -49,8 +45,5 @@ func columnView(name string, items ...model.WorkItemView) model.ColumnView {
 }
 
 func itemView(item model.WorkItem) model.WorkItemView {
-	return model.WorkItemView{
-		ID:   item.ID,
-		Name: item.Name,
-	}
+	return model.WorkItemView(item)
 }

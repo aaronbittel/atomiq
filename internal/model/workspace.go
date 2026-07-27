@@ -7,6 +7,7 @@ import (
 )
 
 // Workspace contains the columns and work items in one work context.
+// Its revision is managed exclusively by WorkspaceModel.
 type Workspace struct {
 	Columns  []Column
 	revision uint64
@@ -97,10 +98,7 @@ func (ws *Workspace) moveToPosition(id string, insertPoint WorkItemInsertionPoin
 		return false, err
 	}
 
-	to := workItemPosition{
-		ColumnIdx: insertPoint.ColumnIdx,
-		ItemIdx:   insertPoint.ItemIdx,
-	}
+	to := workItemPosition(insertPoint)
 
 	if sameEffectivePosition(from, to) {
 		return false, nil
@@ -155,10 +153,7 @@ func (ws *Workspace) view() WorkspaceView {
 	for i, col := range ws.Columns {
 		columnViews[i].Name = col.Name
 		for _, wi := range col.WorkItems {
-			columnViews[i].WorkItems = append(columnViews[i].WorkItems, WorkItemView{
-				ID:   wi.ID,
-				Name: wi.Name,
-			})
+			columnViews[i].WorkItems = append(columnViews[i].WorkItems, WorkItemView(wi))
 		}
 	}
 	return WorkspaceView{
@@ -252,18 +247,6 @@ func (ws *Workspace) getToWorkItemPosition(from workItemPosition, direction Move
 	}
 
 	return to, nil
-}
-
-func (ws *Workspace) isValidFromPosition(pos workItemPosition) error {
-	if !validSliceAccess(pos.ColumnIdx, len(ws.Columns)) {
-		return columnIdxErr(pos.ColumnIdx, len(ws.Columns))
-	}
-
-	if !validSliceAccess(pos.ItemIdx, len(ws.Columns[pos.ColumnIdx].WorkItems)) {
-		return itemIdxErr(pos.ColumnIdx, pos.ItemIdx, len(ws.Columns[pos.ColumnIdx].WorkItems))
-	}
-
-	return nil
 }
 
 func (ws *Workspace) isValidToPosition(pos WorkItemInsertionPoint) error {
