@@ -49,80 +49,23 @@ func (wm *WorkspaceModel) WorkspaceView() WorkspaceView {
 
 // WorkItemAdd trims and appends a new item to the selected column.
 func (wm *WorkspaceModel) WorkItemAdd(expectedRevision uint64, columnIdx int, name string) error {
-	wm.mu.Lock()
-	defer wm.mu.Unlock()
-
-	if wm.workspace.revision != expectedRevision {
-		return fmt.Errorf(
-			"%w: expected %d, actual %d",
-			ErrRevisionConflict,
-			expectedRevision,
-			wm.workspace.revision,
-		)
-	}
-
-	updated, err := wm.workspace.add(columnIdx, name)
-	if err != nil {
-		return err
-	}
-
-	if updated {
-		wm.workspace.revision += 1
-	}
-
-	return nil
+	return wm.mutate(expectedRevision, func(w *Workspace) (bool, error) {
+		return w.add(columnIdx, name)
+	})
 }
 
 // WorkItemDelete removes the item with itemID.
 func (wm *WorkspaceModel) WorkItemDelete(expectedRevision uint64, itemID string) error {
-	wm.mu.Lock()
-	defer wm.mu.Unlock()
-
-	if wm.workspace.revision != expectedRevision {
-		return fmt.Errorf(
-			"%w: expected %d, actual %d",
-			ErrRevisionConflict,
-			expectedRevision,
-			wm.workspace.revision,
-		)
-	}
-
-	updated, err := wm.workspace.delete(itemID)
-	if err != nil {
-		return err
-	}
-
-	if updated {
-		wm.workspace.revision += 1
-	}
-
-	return nil
+	return wm.mutate(expectedRevision, func(w *Workspace) (bool, error) {
+		return w.delete(itemID)
+	})
 }
 
 // WorkItemMoveDirection moves an item one visual step.
 func (wm *WorkspaceModel) WorkItemMoveDirection(expectedRevision uint64, itemID string, direction MoveDirection) error {
-	wm.mu.Lock()
-	defer wm.mu.Unlock()
-
-	if wm.workspace.revision != expectedRevision {
-		return fmt.Errorf(
-			"%w: expected %d, actual %d",
-			ErrRevisionConflict,
-			expectedRevision,
-			wm.workspace.revision,
-		)
-	}
-
-	updated, err := wm.workspace.moveInDirection(itemID, direction)
-	if err != nil {
-		return err
-	}
-
-	if updated {
-		wm.workspace.revision += 1
-	}
-
-	return nil
+	return wm.mutate(expectedRevision, func(w *Workspace) (bool, error) {
+		return w.moveInDirection(itemID, direction)
+	})
 }
 
 // WorkItemMovePosition moves an item to an insertion position.
@@ -130,7 +73,12 @@ func (wm *WorkspaceModel) WorkItemMoveDirection(expectedRevision uint64, itemID 
 // Within the same column, moving an item to its own insertion position or the
 // next insertion position is a no-op. For [A, B, C], moving B to index 1 or 2
 // leaves the column unchanged.
-func (wm *WorkspaceModel) WorkItemMovePosition(expectedRevision uint64, itemID string, to WorkItemInsertionPoint) error {
+func (wm *WorkspaceModel) WorkItemMovePosition(expectedRevision uint64, itemID string, insertPoint WorkItemInsertionPoint) error {
+	return wm.mutate(expectedRevision, func(w *Workspace) (bool, error) {
+		return w.moveToPosition(itemID, insertPoint)
+	})
+}
+func (wm *WorkspaceModel) mutate(expectedRevision uint64, mutation func(*Workspace) (bool, error)) error {
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
 
@@ -143,13 +91,13 @@ func (wm *WorkspaceModel) WorkItemMovePosition(expectedRevision uint64, itemID s
 		)
 	}
 
-	updated, err := wm.workspace.moveToPosition(itemID, to)
+	updated, err := mutation(&wm.workspace)
 	if err != nil {
 		return err
 	}
 
 	if updated {
-		wm.workspace.revision += 1
+		wm.workspace.revision++
 	}
 
 	return nil
