@@ -35,7 +35,7 @@
                     <form action="/work-item" method="post">
                         <input type="hidden" name="columnIdx" value="{{$columnIdx}}">
                         <input type="hidden" name="revision" value="{{$.Ws.Revision}}">
-                        <input type="text" name="name" id="name" class="bordered-box" required minlength={1} placeholder="add new item"
+                        <input type="text" name="name" class="bordered-box" required minlength="1" placeholder="add new item"
                             oninvalid="this.setCustomValidity('work item must not be blank')"
                             oninput="this.setCustomValidity('')"
                             >
