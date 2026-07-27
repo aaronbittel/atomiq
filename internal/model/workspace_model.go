@@ -64,14 +64,11 @@ func (wm *WorkspaceModel) WorkItemDelete(itemID string) error {
 }
 
 // WorkItemMoveDirection moves an item one visual step.
-//
-// The from position must point at the item currently identified by itemID. This
-// protects requests from acting on a stale position after the workspace changed.
-func (wm *WorkspaceModel) WorkItemMoveDirection(itemID string, from WorkItemPosition, direction MoveDirection) error {
+func (wm *WorkspaceModel) WorkItemMoveDirection(itemID string, direction MoveDirection) error {
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
 
-	return wm.workspace.moveInDirection(itemID, from, direction)
+	return wm.workspace.moveInDirection(itemID, direction)
 }
 
 // WorkItemPosition addresses a column plus an item or insertion slot.

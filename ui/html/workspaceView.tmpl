@@ -18,8 +18,6 @@
                         {{range $.MoveDirections}}
                         <form action="/work-item/{{$item.ID}}/move" method="post">
                             <input type="hidden" name="_method" value="PATCH">
-                            <input type="hidden" name="fromColumnIdx" value="{{$columnIdx}}">
-                            <input type="hidden" name="fromItemIdx" value="{{$itemIdx}}">
                             <input type="hidden" name="direction" value="{{.Value}}">
                             <button type="submit" class="arrow arrow-{{.Value}}" aria-label="Move {{.Value}}">{{.Symbol}}</button>
                         </form>

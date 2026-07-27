@@ -167,7 +167,7 @@ func TestMoveInDirection(t *testing.T) {
 			t.Run(string(dir), func(t *testing.T) {
 				ws := workspace(column("Column", A))
 
-				if err := ws.moveInDirection("1", WorkItemPosition{}, dir); err != nil {
+				if err := ws.moveInDirection("1", dir); err != nil {
 					t.Fatal(err)
 				}
 				want := workspace(column("Column", A))
@@ -244,7 +244,7 @@ func TestMoveInDirection(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				if err := tt.ws.moveInDirection(tt.id, tt.from, tt.direction); err != nil {
+				if err := tt.ws.moveInDirection(tt.id, tt.direction); err != nil {
 					t.Fatal(err)
 				}
 
@@ -265,26 +265,6 @@ func TestMoveInDirection(t *testing.T) {
 			wantErr   error
 		}{
 			{
-				name: "column index",
-				ws: workspace(
-					column("Column", A),
-				),
-				id:        A.ID,
-				from:      WorkItemPosition{ColumnIdx: 1},
-				direction: DirectionUp,
-				wantErr:   ErrInvalidPosition,
-			},
-			{
-				name: "item index",
-				ws: workspace(
-					column("Column", A),
-				),
-				id:        A.ID,
-				from:      WorkItemPosition{ItemIdx: 1},
-				direction: DirectionUp,
-				wantErr:   ErrInvalidPosition,
-			},
-			{
 				name: "item ID",
 				ws: workspace(
 					column("Column", A),
@@ -292,7 +272,7 @@ func TestMoveInDirection(t *testing.T) {
 				id:        B.ID,
 				from:      WorkItemPosition{},
 				direction: DirectionUp,
-				wantErr:   ErrItemIDMismatch,
+				wantErr:   ErrWorkItemNotFound,
 			},
 			{
 				name: "move direction",
@@ -308,7 +288,7 @@ func TestMoveInDirection(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				err := tt.ws.moveInDirection(tt.id, tt.from, tt.direction)
+				err := tt.ws.moveInDirection(tt.id, tt.direction)
 				if err == nil {
 					t.Fatalf("expected error %v, got nil", tt.wantErr)
 				}

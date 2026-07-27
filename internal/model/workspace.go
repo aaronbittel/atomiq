@@ -51,30 +51,22 @@ func (ws *Workspace) delete(id string) error {
 	return nil
 }
 
-func (ws *Workspace) moveInDirection(id string, from WorkItemPosition, direction MoveDirection) error {
-	if err := ws.isValidFromPosition(from); err != nil {
-		return err
-	}
-
-	item := ws.Columns[from.ColumnIdx].WorkItems[from.ItemIdx]
-	if id != item.ID {
-		return fmt.Errorf("%w: expected %q, got %q", ErrItemIDMismatch, id, item.ID)
-	}
-
-	to, err := ws.getToWorkItemPosition(from, direction)
+func (ws *Workspace) moveInDirection(id string, direction MoveDirection) error {
+	pos, err := ws.findWorkItemPosition(id)
 	if err != nil {
 		return err
 	}
 
-	if err := ws.isValidToPosition(to); err != nil {
+	to, err := ws.getToWorkItemPosition(pos, direction)
+	if err != nil {
 		return err
 	}
 
-	if from == to {
+	if pos == to {
 		return nil
 	}
 
-	ws.moveWorkItemToPosition(from, to)
+	ws.moveWorkItemToPosition(pos, to)
 	return nil
 }
 

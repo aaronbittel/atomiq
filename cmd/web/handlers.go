@@ -119,32 +119,13 @@ func (app *application) workItemDelete(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
-func (app *application) parseMoveFormData(r *http.Request) (model.WorkItemPosition, model.MoveDirection, error) {
-	if err := r.ParseForm(); err != nil {
-		return model.WorkItemPosition{}, "", err
-	}
-
-	columnIdx, err := parseInt(r.PostForm.Get("fromColumnIdx"))
-	if err != nil {
-		return model.WorkItemPosition{}, "", err
-	}
-
-	itemIdx, err := parseInt(r.PostForm.Get("fromItemIdx"))
-	if err != nil {
-		return model.WorkItemPosition{}, "", err
-	}
-
-	moveDir, err := model.ParseMoveDirection(r.PostForm.Get("direction"))
-	if err != nil {
-		return model.WorkItemPosition{}, "", err
-	}
-
-	from := model.WorkItemPosition{ColumnIdx: columnIdx, ItemIdx: itemIdx}
-	return from, moveDir, nil
-}
-
 func (app *application) workItemMove(w http.ResponseWriter, r *http.Request) {
-	srcPos, direction, err := app.parseMoveFormData(r)
+	if err := r.ParseForm(); err != nil {
+		app.clientError(w, http.StatusUnprocessableEntity)
+		return
+	}
+
+	direction, err := model.ParseMoveDirection(r.PostForm.Get("direction"))
 	if err != nil {
 		app.clientError(w, http.StatusUnprocessableEntity)
 		return
@@ -156,12 +137,10 @@ func (app *application) workItemMove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := app.workspaceModel.WorkItemMoveDirection(workItemID, srcPos, direction); err != nil {
+	if err := app.workspaceModel.WorkItemMoveDirection(workItemID, direction); err != nil {
 		switch {
-		case errors.Is(err, model.ErrInvalidPosition) || errors.Is(err, model.ErrInvalidMoveDirection):
+		case errors.Is(err, model.ErrWorkItemNotFound), errors.Is(err, model.ErrInvalidMoveDirection):
 			app.clientError(w, http.StatusUnprocessableEntity)
-		case errors.Is(err, model.ErrItemIDMismatch):
-			app.clientError(w, http.StatusConflict)
 		default:
 			app.serverError(w, r, err)
 		}

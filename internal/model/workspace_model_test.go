@@ -90,27 +90,11 @@ func TestWorkItemMoveDirection(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		wm := model.NewWorkspaceModel(workspace(column("Column", A, B)))
 
-		if err := wm.WorkItemMoveDirection(B.ID, model.WorkItemPosition{ColumnIdx: 0, ItemIdx: 1}, model.DirectionUp); err != nil {
+		if err := wm.WorkItemMoveDirection(B.ID, model.DirectionUp); err != nil {
 			t.Fatal(err)
 		}
 
 		want := workspaceView(columnView("Column", itemView(B), itemView(A)))
-		got := wm.WorkspaceView()
-
-		if diff := cmp.Diff(want, got); diff != "" {
-			t.Errorf("workspace view mismatch (-want +got):\n%s", diff)
-		}
-	})
-
-	t.Run("invalid from position", func(t *testing.T) {
-		wm := model.NewWorkspaceModel(workspace(column("Column", A, B)))
-
-		err := wm.WorkItemMoveDirection(B.ID, model.WorkItemPosition{ColumnIdx: 1, ItemIdx: 1}, model.DirectionUp)
-		if !errors.Is(err, model.ErrInvalidPosition) {
-			t.Fatal(err)
-		}
-
-		want := workspaceView(columnView("Column", itemView(A), itemView(B)))
 		got := wm.WorkspaceView()
 
 		if diff := cmp.Diff(want, got); diff != "" {
