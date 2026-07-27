@@ -25,16 +25,34 @@ type WorkItem struct {
 }
 
 var (
-	ErrInvalidColumn        = errors.New("invalid column")
-	ErrInvalidPosition      = errors.New("invalid work item position")
+	ErrInvalidPosition      = errors.New("invalid position")
 	ErrInvalidWorkItemName  = errors.New("invalid work item name")
 	ErrItemIDMismatch       = errors.New("item ID mismatch")
 	ErrInvalidMoveDirection = errors.New("invalid move direction")
 )
 
+func columnIdxErr(idx, length int) error {
+	return fmt.Errorf(
+		"%w: column index %d out of bounds for %d columns",
+		ErrInvalidPosition,
+		idx,
+		length,
+	)
+}
+
+func itemIdxErr(columnIdx, itemIdx, length int) error {
+	return fmt.Errorf(
+		"%w: item index %d out of bounds for column %d with %d items",
+		ErrInvalidPosition,
+		itemIdx,
+		columnIdx,
+		length,
+	)
+}
+
 func (ws *Workspace) add(columnIdx int, name string) error {
 	if !validSliceAccess(columnIdx, len(ws.Columns)) {
-		return ErrInvalidColumn
+		return columnIdxErr(columnIdx, len(ws.Columns))
 	}
 
 	name = strings.TrimSpace(name)
@@ -49,11 +67,11 @@ func (ws *Workspace) add(columnIdx int, name string) error {
 
 func (ws *Workspace) delete(id string, pos WorkItemPosition) error {
 	if !validSliceAccess(pos.ColumnIdx, len(ws.Columns)) {
-		return fmt.Errorf("%w: column index out of bounds", ErrInvalidPosition)
+		return columnIdxErr(pos.ColumnIdx, len(ws.Columns))
 	}
 	items := ws.Columns[pos.ColumnIdx].WorkItems
 	if !validSliceAccess(pos.ItemIdx, len(items)) {
-		return fmt.Errorf("%w: item index out of bounds", ErrInvalidPosition)
+		return itemIdxErr(pos.ColumnIdx, pos.ItemIdx, len(items))
 	}
 
 	item := items[pos.ItemIdx]
@@ -69,7 +87,7 @@ func (ws *Workspace) delete(id string, pos WorkItemPosition) error {
 
 func (ws *Workspace) moveInDirection(id string, from WorkItemPosition, direction MoveDirection) error {
 	if err := ws.isValidFromPosition(from); err != nil {
-		return fmt.Errorf("%w: %v", ErrInvalidPosition, err)
+		return err
 	}
 
 	item := ws.Columns[from.ColumnIdx].WorkItems[from.ItemIdx]
@@ -83,7 +101,7 @@ func (ws *Workspace) moveInDirection(id string, from WorkItemPosition, direction
 	}
 
 	if err := ws.isValidToPosition(to); err != nil {
-		return fmt.Errorf("%w: %v", ErrInvalidPosition, err)
+		return err
 	}
 
 	if from == to {
@@ -95,7 +113,7 @@ func (ws *Workspace) moveInDirection(id string, from WorkItemPosition, direction
 
 func (ws *Workspace) moveToPosition(id string, from, to WorkItemPosition) error {
 	if err := ws.isValidFromPosition(from); err != nil {
-		return fmt.Errorf("%w: %v", ErrInvalidPosition, err)
+		return err
 	}
 
 	item := ws.Columns[from.ColumnIdx].WorkItems[from.ItemIdx]
@@ -104,7 +122,7 @@ func (ws *Workspace) moveToPosition(id string, from, to WorkItemPosition) error 
 	}
 
 	if err := ws.isValidToPosition(to); err != nil {
-		return fmt.Errorf("%w: %v", ErrInvalidPosition, err)
+		return err
 	}
 
 	if from == to {
@@ -234,11 +252,11 @@ func (ws *Workspace) getToWorkItemPosition(from WorkItemPosition, direction Move
 
 func (ws *Workspace) isValidFromPosition(pos WorkItemPosition) error {
 	if !validSliceAccess(pos.ColumnIdx, len(ws.Columns)) {
-		return errors.New("from column index out of bounds")
+		return columnIdxErr(pos.ColumnIdx, len(ws.Columns))
 	}
 
 	if !validSliceAccess(pos.ItemIdx, len(ws.Columns[pos.ColumnIdx].WorkItems)) {
-		return errors.New("from item index out of bounds")
+		return itemIdxErr(pos.ColumnIdx, pos.ItemIdx, len(ws.Columns[pos.ColumnIdx].WorkItems))
 	}
 
 	return nil
@@ -246,11 +264,11 @@ func (ws *Workspace) isValidFromPosition(pos WorkItemPosition) error {
 
 func (ws *Workspace) isValidToPosition(pos WorkItemPosition) error {
 	if !validSliceAccess(pos.ColumnIdx, len(ws.Columns)) {
-		return errors.New("to column index out of bounds")
+		return columnIdxErr(pos.ColumnIdx, len(ws.Columns))
 	}
 
 	if !validSliceAccess(pos.ItemIdx, len(ws.Columns[pos.ColumnIdx].WorkItems)+1) {
-		return errors.New("to item index out of bounds")
+		return itemIdxErr(pos.ColumnIdx, pos.ItemIdx, len(ws.Columns[pos.ColumnIdx].WorkItems)+1)
 	}
 
 	return nil

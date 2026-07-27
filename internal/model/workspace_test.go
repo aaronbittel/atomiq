@@ -53,8 +53,10 @@ func TestAdd(t *testing.T) {
 	t.Run("invalid column", func(t *testing.T) {
 		ws := workspace(column("Column", A))
 
-		if err := ws.add(1, "New item"); !errors.Is(err, ErrInvalidColumn) {
-			t.Fatalf("expected error %v, got %v", ErrInvalidColumn, err)
+		wantErr := ErrInvalidPosition
+
+		if err := ws.add(1, "New item"); !errors.Is(err, wantErr) {
+			t.Fatalf("expected error %v, got %v", wantErr, err)
 		}
 	})
 }

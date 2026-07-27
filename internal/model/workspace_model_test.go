@@ -50,8 +50,10 @@ func TestWorkItemAdd(t *testing.T) {
 	t.Run("invalid column index", func(t *testing.T) {
 		wm := model.NewWorkspaceModel(workspace(column("Column")))
 
-		if err := wm.WorkItemAdd(1, "invalid column"); !errors.Is(err, model.ErrInvalidColumn) {
-			t.Fatalf("expected %v, got %v", model.ErrInvalidColumn, err)
+		wantErr := model.ErrInvalidPosition
+
+		if err := wm.WorkItemAdd(1, "invalid column"); !errors.Is(err, wantErr) {
+			t.Fatalf("expected %v, got %v", wantErr, err)
 		}
 	})
 }

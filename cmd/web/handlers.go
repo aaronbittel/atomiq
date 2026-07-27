@@ -83,7 +83,7 @@ func (app *application) workItemPost(w http.ResponseWriter, r *http.Request) {
 
 	if err := app.workspaceModel.WorkItemAdd(columnIdx, workItemName); err != nil {
 		switch {
-		case errors.Is(err, model.ErrInvalidColumn):
+		case errors.Is(err, model.ErrInvalidPosition):
 			app.clientError(w, http.StatusUnprocessableEntity)
 		default:
 			app.serverError(w, r, err)
