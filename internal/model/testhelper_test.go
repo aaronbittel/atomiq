@@ -26,8 +26,15 @@ func item(id, name string) WorkItem {
 	}
 }
 
-func position(columnIdx, itemIdx int) WorkItemPosition {
-	return WorkItemPosition{
+func position(columnIdx, itemIdx int) workItemPosition {
+	return workItemPosition{
+		ColumnIdx: columnIdx,
+		ItemIdx:   itemIdx,
+	}
+}
+
+func insertPoint(columnIdx, itemIdx int) WorkItemInsertionPoint {
+	return WorkItemInsertionPoint{
 		ColumnIdx: columnIdx,
 		ItemIdx:   itemIdx,
 	}

@@ -28,13 +28,6 @@ func item(id, name string) model.WorkItem {
 	}
 }
 
-func position(columnIdx, itemIdx int) model.WorkItemPosition {
-	return model.WorkItemPosition{
-		ColumnIdx: columnIdx,
-		ItemIdx:   itemIdx,
-	}
-}
-
 func workspaceView(columns ...model.ColumnView) model.WorkspaceView {
 	return model.WorkspaceView{
 		Columns: columns,

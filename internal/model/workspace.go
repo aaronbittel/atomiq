@@ -23,6 +23,22 @@ type WorkItem struct {
 	Name string
 }
 
+// workItemPosition identifies the current location of an existing work item.
+type workItemPosition struct {
+	ColumnIdx int
+	ItemIdx   int
+}
+
+// WorkItemInsertionPoint identifies a position at which a work item can be inserted.
+type WorkItemInsertionPoint struct {
+	ColumnIdx int
+	// ItemIdx is an insertion index within the destination column.
+	//
+	// For a column containing [A, B, C], index 0 inserts before A, index 1
+	// inserts between A and B, and index 3 appends after C.
+	ItemIdx int
+}
+
 func (ws *Workspace) add(columnIdx int, name string) error {
 	if !validSliceAccess(columnIdx, len(ws.Columns)) {
 		return columnIdxErr(columnIdx, len(ws.Columns))
@@ -70,29 +86,42 @@ func (ws *Workspace) moveInDirection(id string, direction MoveDirection) error {
 	return nil
 }
 
-func (ws *Workspace) moveToPosition(id string, to WorkItemPosition) error {
-	pos, err := ws.findWorkItemPosition(id)
+func (ws *Workspace) moveToPosition(id string, insertPoint WorkItemInsertionPoint) error {
+	from, err := ws.findWorkItemPosition(id)
 	if err != nil {
 		return err
 	}
 
-	if err := ws.isValidToPosition(to); err != nil {
+	if err := ws.isValidToPosition(insertPoint); err != nil {
 		return err
 	}
 
-	if pos == to {
+	to := workItemPosition{
+		ColumnIdx: insertPoint.ColumnIdx,
+		ItemIdx:   insertPoint.ItemIdx,
+	}
+
+	if sameEffectivePosition(from, to) {
 		return nil
 	}
 
-	ws.moveWorkItemToPosition(pos, to)
+	ws.moveWorkItemToPosition(from, to)
 	return nil
 }
 
-func (ws *Workspace) findWorkItemPosition(id string) (WorkItemPosition, error) {
+func sameEffectivePosition(from, to workItemPosition) bool {
+	if from.ColumnIdx != to.ColumnIdx {
+		return false
+	}
+
+	return to.ItemIdx == from.ItemIdx || to.ItemIdx == from.ItemIdx+1
+}
+
+func (ws *Workspace) findWorkItemPosition(id string) (workItemPosition, error) {
 	for colIdx, col := range ws.Columns {
 		for itemIdx, item := range col.WorkItems {
 			if item.ID == id {
-				return WorkItemPosition{
+				return workItemPosition{
 					ColumnIdx: colIdx,
 					ItemIdx:   itemIdx,
 				}, nil
@@ -100,7 +129,7 @@ func (ws *Workspace) findWorkItemPosition(id string) (WorkItemPosition, error) {
 		}
 	}
 
-	return WorkItemPosition{}, fmt.Errorf("%w: %q", ErrWorkItemNotFound, id)
+	return workItemPosition{}, fmt.Errorf("%w: %q", ErrWorkItemNotFound, id)
 }
 
 func (ws *Workspace) clone() Workspace {
@@ -131,7 +160,7 @@ func (ws *Workspace) view() WorkspaceView {
 	return WorkspaceView{Columns: columnViews}
 }
 
-func (ws *Workspace) moveWorkItemToPosition(from, to WorkItemPosition) {
+func (ws *Workspace) moveWorkItemToPosition(from, to workItemPosition) {
 	if from.ColumnIdx == to.ColumnIdx {
 		ws.moveWorkItemWithinColumn(from.ColumnIdx, from.ItemIdx, to.ItemIdx)
 		return
@@ -155,7 +184,7 @@ func (ws *Workspace) moveWorkItemWithinColumn(columnIdx, fromIdx, toIdx int) {
 	ws.Columns[columnIdx].WorkItems = items
 }
 
-func (ws *Workspace) moveWorkItemBetweenColumns(from, to WorkItemPosition) {
+func (ws *Workspace) moveWorkItemBetweenColumns(from, to workItemPosition) {
 	fromItems := ws.Columns[from.ColumnIdx].WorkItems
 	toItems := ws.Columns[to.ColumnIdx].WorkItems
 
@@ -167,14 +196,14 @@ func (ws *Workspace) moveWorkItemBetweenColumns(from, to WorkItemPosition) {
 	ws.Columns[to.ColumnIdx].WorkItems = toItems
 }
 
-func (ws *Workspace) getToWorkItemPosition(from WorkItemPosition, direction MoveDirection) (WorkItemPosition, error) {
-	var to WorkItemPosition
+func (ws *Workspace) getToWorkItemPosition(from workItemPosition, direction MoveDirection) (workItemPosition, error) {
+	var to workItemPosition
 	switch direction {
 	case DirectionUp:
 		if from.ItemIdx == 0 {
 			return from, nil
 		}
-		to = WorkItemPosition{
+		to = workItemPosition{
 			ColumnIdx: from.ColumnIdx,
 			ItemIdx:   from.ItemIdx - 1,
 		}
@@ -183,7 +212,7 @@ func (ws *Workspace) getToWorkItemPosition(from WorkItemPosition, direction Move
 		if from.ItemIdx == len(items)-1 {
 			return from, nil
 		}
-		to = WorkItemPosition{
+		to = workItemPosition{
 			ColumnIdx: from.ColumnIdx,
 			ItemIdx:   from.ItemIdx + 2,
 		}
@@ -195,7 +224,7 @@ func (ws *Workspace) getToWorkItemPosition(from WorkItemPosition, direction Move
 
 		toColumnIdx := from.ColumnIdx + 1
 
-		to = WorkItemPosition{
+		to = workItemPosition{
 			ColumnIdx: toColumnIdx,
 			ItemIdx:   len(columns[toColumnIdx].WorkItems),
 		}
@@ -207,18 +236,18 @@ func (ws *Workspace) getToWorkItemPosition(from WorkItemPosition, direction Move
 		columns := ws.Columns
 		toColumnIdx := from.ColumnIdx - 1
 
-		to = WorkItemPosition{
+		to = workItemPosition{
 			ColumnIdx: toColumnIdx,
 			ItemIdx:   len(columns[toColumnIdx].WorkItems),
 		}
 	default:
-		return WorkItemPosition{}, fmt.Errorf("%w: %q", ErrInvalidMoveDirection, direction)
+		return workItemPosition{}, fmt.Errorf("%w: %q", ErrInvalidMoveDirection, direction)
 	}
 
 	return to, nil
 }
 
-func (ws *Workspace) isValidFromPosition(pos WorkItemPosition) error {
+func (ws *Workspace) isValidFromPosition(pos workItemPosition) error {
 	if !validSliceAccess(pos.ColumnIdx, len(ws.Columns)) {
 		return columnIdxErr(pos.ColumnIdx, len(ws.Columns))
 	}
@@ -230,7 +259,7 @@ func (ws *Workspace) isValidFromPosition(pos WorkItemPosition) error {
 	return nil
 }
 
-func (ws *Workspace) isValidToPosition(pos WorkItemPosition) error {
+func (ws *Workspace) isValidToPosition(pos WorkItemInsertionPoint) error {
 	if !validSliceAccess(pos.ColumnIdx, len(ws.Columns)) {
 		return columnIdxErr(pos.ColumnIdx, len(ws.Columns))
 	}

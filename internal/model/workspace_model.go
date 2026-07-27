@@ -71,22 +71,12 @@ func (wm *WorkspaceModel) WorkItemMoveDirection(itemID string, direction MoveDir
 	return wm.workspace.moveInDirection(itemID, direction)
 }
 
-// WorkItemPosition addresses a column plus an item or insertion slot.
-type WorkItemPosition struct {
-	ColumnIdx int
-	// ItemIdx is an insertion index.
-	//
-	// In a column [A, B, C], index 0 inserts before A, index 1 inserts between
-	// A and B, and index 3 appends after C.
-	ItemIdx int
-}
-
 // WorkItemMovePosition moves an item to an insertion position.
 //
 // Within the same column, moving an item to its own insertion position or the
 // next insertion position is a no-op. For [A, B, C], moving B to index 1 or 2
 // leaves the column unchanged.
-func (wm *WorkspaceModel) WorkItemMovePosition(itemID string, to WorkItemPosition) error {
+func (wm *WorkspaceModel) WorkItemMovePosition(itemID string, to WorkItemInsertionPoint) error {
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
 
