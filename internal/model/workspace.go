@@ -8,7 +8,8 @@ import (
 
 // Workspace contains the columns and work items in one work context.
 type Workspace struct {
-	Columns []Column
+	Columns  []Column
+	revision uint64
 }
 
 // Column groups work items under one name.
@@ -39,61 +40,61 @@ type WorkItemInsertionPoint struct {
 	ItemIdx int
 }
 
-func (ws *Workspace) add(columnIdx int, name string) error {
+func (ws *Workspace) add(columnIdx int, name string) (updated bool, err error) {
 	if !validSliceAccess(columnIdx, len(ws.Columns)) {
-		return columnIdxErr(columnIdx, len(ws.Columns))
+		return false, columnIdxErr(columnIdx, len(ws.Columns))
 	}
 
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return ErrInvalidWorkItemName
+		return false, ErrInvalidWorkItemName
 	}
 
 	ws.Columns[columnIdx].WorkItems = append(ws.Columns[columnIdx].WorkItems, NewWorkItem(name))
 
-	return nil
+	return true, nil
 }
 
-func (ws *Workspace) delete(id string) error {
+func (ws *Workspace) delete(id string) (updated bool, err error) {
 	pos, err := ws.findWorkItemPosition(id)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	items := ws.Columns[pos.ColumnIdx].WorkItems
 	items = slices.Delete(items, pos.ItemIdx, pos.ItemIdx+1)
 	ws.Columns[pos.ColumnIdx].WorkItems = items
 
-	return nil
+	return true, nil
 }
 
-func (ws *Workspace) moveInDirection(id string, direction MoveDirection) error {
+func (ws *Workspace) moveInDirection(id string, direction MoveDirection) (updated bool, err error) {
 	pos, err := ws.findWorkItemPosition(id)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	to, err := ws.getToWorkItemPosition(pos, direction)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	if pos == to {
-		return nil
+		return false, nil
 	}
 
 	ws.moveWorkItemToPosition(pos, to)
-	return nil
+	return true, nil
 }
 
-func (ws *Workspace) moveToPosition(id string, insertPoint WorkItemInsertionPoint) error {
+func (ws *Workspace) moveToPosition(id string, insertPoint WorkItemInsertionPoint) (updated bool, err error) {
 	from, err := ws.findWorkItemPosition(id)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	if err := ws.isValidToPosition(insertPoint); err != nil {
-		return err
+		return false, err
 	}
 
 	to := workItemPosition{
@@ -102,11 +103,11 @@ func (ws *Workspace) moveToPosition(id string, insertPoint WorkItemInsertionPoin
 	}
 
 	if sameEffectivePosition(from, to) {
-		return nil
+		return false, nil
 	}
 
 	ws.moveWorkItemToPosition(from, to)
-	return nil
+	return true, nil
 }
 
 func sameEffectivePosition(from, to workItemPosition) bool {

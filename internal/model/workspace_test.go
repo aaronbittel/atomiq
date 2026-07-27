@@ -17,8 +17,13 @@ func TestAdd(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		ws := workspace(column("Column", A))
 
-		if err := ws.add(0, "  New item  "); err != nil {
+		updated, err := ws.add(0, "  New item  ")
+		if err != nil {
 			t.Fatal(err)
+		}
+
+		if !updated {
+			t.Fatal("ws should have been updated")
 		}
 
 		items := ws.Columns[0].WorkItems
@@ -39,13 +44,20 @@ func TestAdd(t *testing.T) {
 	t.Run("blank name", func(t *testing.T) {
 		ws := workspace(column("Column", A))
 
-		if err := ws.add(0, "   "); !errors.Is(err, ErrInvalidWorkItemName) {
-			t.Fatalf("expected error %v, got %v", ErrInvalidWorkItemName, err)
+		wantErr := ErrInvalidWorkItemName
+
+		updated, err := ws.add(0, "   ")
+		if !errors.Is(err, wantErr) {
+			t.Fatalf("expected error %v, got %v", wantErr, err)
+		}
+
+		if updated {
+			t.Fatal("expected workspace not to be updated")
 		}
 
 		want := workspace(column("Column", A))
 
-		if diff := cmp.Diff(want, ws); diff != "" {
+		if diff := cmp.Diff(want, ws, cmp.AllowUnexported(Workspace{})); diff != "" {
 			t.Errorf("workspace mismatch (-want +got):\n%s", diff)
 		}
 	})
@@ -55,8 +67,13 @@ func TestAdd(t *testing.T) {
 
 		wantErr := ErrInvalidPosition
 
-		if err := ws.add(1, "New item"); !errors.Is(err, wantErr) {
+		updated, err := ws.add(1, "New item")
+		if !errors.Is(err, wantErr) {
 			t.Fatalf("expected error %v, got %v", wantErr, err)
+		}
+
+		if updated {
+			t.Fatal("expected workspace not to be updated")
 		}
 	})
 }
@@ -117,11 +134,16 @@ func TestDelete(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				if err := tt.ws.delete(tt.id); err != nil {
+				updated, err := tt.ws.delete(tt.id)
+				if err != nil {
 					t.Fatal(err)
 				}
 
-				if diff := cmp.Diff(tt.want, tt.ws); diff != "" {
+				if !updated {
+					t.Fatalf("expected workspace to be updated")
+				}
+
+				if diff := cmp.Diff(tt.want, tt.ws, cmp.AllowUnexported(Workspace{})); diff != "" {
 					t.Errorf("workspace mismatch (-want +got):\n%s", diff)
 				}
 			})
@@ -146,14 +168,18 @@ func TestDelete(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				ws := workspace(column("Column", A))
 
-				err := ws.delete(tt.id)
+				updated, err := ws.delete(tt.id)
 				if !errors.Is(err, tt.wantErr) {
 					t.Fatalf("expected err %v, got %v", tt.wantErr, err)
 				}
 
+				if updated {
+					t.Fatal("expected workspace not to be updated")
+				}
+
 				want := workspace(column("Column", A))
 
-				if diff := cmp.Diff(want, ws); diff != "" {
+				if diff := cmp.Diff(want, ws, cmp.AllowUnexported(Workspace{})); diff != "" {
 					t.Errorf("workspace mismatch (-want +got):\n%s", diff)
 				}
 			})
@@ -167,12 +193,18 @@ func TestMoveInDirection(t *testing.T) {
 			t.Run(string(dir), func(t *testing.T) {
 				ws := workspace(column("Column", A))
 
-				if err := ws.moveInDirection("1", dir); err != nil {
+				updated, err := ws.moveInDirection("1", dir)
+				if err != nil {
 					t.Fatal(err)
 				}
+
+				if updated {
+					t.Fatal("expected workspace not to be updated")
+				}
+
 				want := workspace(column("Column", A))
 
-				if diff := cmp.Diff(want, ws); diff != "" {
+				if diff := cmp.Diff(want, ws, cmp.AllowUnexported(Workspace{})); diff != "" {
 					t.Errorf("workspace mismatch (-want +got):\n%s", diff)
 				}
 			})
@@ -244,11 +276,16 @@ func TestMoveInDirection(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				if err := tt.ws.moveInDirection(tt.id, tt.direction); err != nil {
+				updated, err := tt.ws.moveInDirection(tt.id, tt.direction)
+				if err != nil {
 					t.Fatal(err)
 				}
 
-				if diff := cmp.Diff(tt.want, tt.ws); diff != "" {
+				if !updated {
+					t.Fatalf("expected workspace to be updated")
+				}
+
+				if diff := cmp.Diff(tt.want, tt.ws, cmp.AllowUnexported(Workspace{})); diff != "" {
 					t.Errorf("workspace mismatch (-want +got):\n%s", diff)
 				}
 			})
@@ -288,9 +325,13 @@ func TestMoveInDirection(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				err := tt.ws.moveInDirection(tt.id, tt.direction)
+				updated, err := tt.ws.moveInDirection(tt.id, tt.direction)
 				if err == nil {
 					t.Fatalf("expected error %v, got nil", tt.wantErr)
+				}
+
+				if updated {
+					t.Fatal("expected workspace not to be updated")
 				}
 
 				if !errors.Is(err, tt.wantErr) {
@@ -309,6 +350,7 @@ func TestMoveToPosition(t *testing.T) {
 			id          string
 			insertPoint WorkItemInsertionPoint
 			want        Workspace
+			wantUpdated bool
 		}{
 			{
 				name: "move between columns",
@@ -322,6 +364,7 @@ func TestMoveToPosition(t *testing.T) {
 					column("Column 1", A),
 					column("Column 2", C, B),
 				),
+				wantUpdated: true,
 			},
 			{
 				name: "move earlier in same column",
@@ -333,6 +376,7 @@ func TestMoveToPosition(t *testing.T) {
 				want: workspace(
 					column("Column", C, A, B),
 				),
+				wantUpdated: true,
 			},
 			{
 				name: "move later in same column",
@@ -344,6 +388,7 @@ func TestMoveToPosition(t *testing.T) {
 				want: workspace(
 					column("Column", B, A, C),
 				),
+				wantUpdated: true,
 			},
 			{
 				name: "stay in same position",
@@ -355,6 +400,7 @@ func TestMoveToPosition(t *testing.T) {
 				want: workspace(
 					column("Column", A, B, C),
 				),
+				wantUpdated: false,
 			},
 			{
 				name: "same column move to end",
@@ -366,6 +412,7 @@ func TestMoveToPosition(t *testing.T) {
 				want: workspace(
 					column("Column", B, C, A),
 				),
+				wantUpdated: true,
 			},
 			{
 				name: "same column move to beginning",
@@ -377,17 +424,22 @@ func TestMoveToPosition(t *testing.T) {
 				want: workspace(
 					column("Column", C, A, B),
 				),
+				wantUpdated: true,
 			},
 		}
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				err := tt.ws.moveToPosition(tt.id, tt.insertPoint)
+				updated, err := tt.ws.moveToPosition(tt.id, tt.insertPoint)
 				if err != nil {
 					t.Fatalf("WorkItemMove() unexpected error: %v", err)
 				}
 
-				if diff := cmp.Diff(tt.want, tt.ws); diff != "" {
+				if tt.wantUpdated != updated {
+					t.Fatalf("expecte updated to be %v, got %v", tt.wantUpdated, updated)
+				}
+
+				if diff := cmp.Diff(tt.want, tt.ws, cmp.AllowUnexported(Workspace{})); diff != "" {
 					t.Errorf("workspace mismatch (-want +got):\n%s", diff)
 				}
 			})
@@ -443,10 +495,14 @@ func TestMoveToPosition(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				err := tt.ws.moveToPosition(tt.id, tt.insertPoint)
+				updated, err := tt.ws.moveToPosition(tt.id, tt.insertPoint)
 
 				if !errors.Is(err, tt.wantErr) {
 					t.Fatalf("WorkItemMove() expected error: %v, got nil", tt.wantErr)
+				}
+
+				if updated {
+					t.Fatal("expected workspace not to be updated")
 				}
 			})
 		}
