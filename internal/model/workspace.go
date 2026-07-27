@@ -108,7 +108,8 @@ func (ws *Workspace) moveInDirection(id string, from WorkItemPosition, direction
 		return nil
 	}
 
-	return ws.moveWorkItemToPosition(from, to)
+	ws.moveWorkItemToPosition(from, to)
+	return nil
 }
 
 func (ws *Workspace) moveToPosition(id string, from, to WorkItemPosition) error {
@@ -129,7 +130,8 @@ func (ws *Workspace) moveToPosition(id string, from, to WorkItemPosition) error 
 		return nil
 	}
 
-	return ws.moveWorkItemToPosition(from, to)
+	ws.moveWorkItemToPosition(from, to)
+	return nil
 }
 
 func (ws *Workspace) clone() Workspace {
@@ -160,15 +162,16 @@ func (ws *Workspace) view() WorkspaceView {
 	return WorkspaceView{Columns: columnViews}
 }
 
-func (ws *Workspace) moveWorkItemToPosition(from, to WorkItemPosition) error {
+func (ws *Workspace) moveWorkItemToPosition(from, to WorkItemPosition) {
 	if from.ColumnIdx == to.ColumnIdx {
-		return ws.moveWorkItemWithinColumn(from.ColumnIdx, from.ItemIdx, to.ItemIdx)
+		ws.moveWorkItemWithinColumn(from.ColumnIdx, from.ItemIdx, to.ItemIdx)
+		return
 	}
 
-	return ws.moveWorkItemBetweenColumns(from, to)
+	ws.moveWorkItemBetweenColumns(from, to)
 }
 
-func (ws *Workspace) moveWorkItemWithinColumn(columnIdx, fromIdx, toIdx int) error {
+func (ws *Workspace) moveWorkItemWithinColumn(columnIdx, fromIdx, toIdx int) {
 	items := ws.Columns[columnIdx].WorkItems
 	item := items[fromIdx]
 
@@ -181,11 +184,9 @@ func (ws *Workspace) moveWorkItemWithinColumn(columnIdx, fromIdx, toIdx int) err
 	items = slices.Insert(items, toIdx, item)
 
 	ws.Columns[columnIdx].WorkItems = items
-
-	return nil
 }
 
-func (ws *Workspace) moveWorkItemBetweenColumns(from, to WorkItemPosition) error {
+func (ws *Workspace) moveWorkItemBetweenColumns(from, to WorkItemPosition) {
 	fromItems := ws.Columns[from.ColumnIdx].WorkItems
 	toItems := ws.Columns[to.ColumnIdx].WorkItems
 
@@ -195,8 +196,6 @@ func (ws *Workspace) moveWorkItemBetweenColumns(from, to WorkItemPosition) error
 
 	ws.Columns[from.ColumnIdx].WorkItems = fromItems
 	ws.Columns[to.ColumnIdx].WorkItems = toItems
-
-	return nil
 }
 
 func (ws *Workspace) getToWorkItemPosition(from WorkItemPosition, direction MoveDirection) (WorkItemPosition, error) {
