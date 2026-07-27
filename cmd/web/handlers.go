@@ -106,26 +106,10 @@ func (app *application) workItemDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	columnIdx, err := parseInt(r.PostForm.Get("columnIdx"))
-	if err != nil {
-		app.clientError(w, http.StatusUnprocessableEntity)
-		return
-	}
-
-	itemIdx, err := parseInt(r.PostForm.Get("itemIdx"))
-	if err != nil {
-		app.clientError(w, http.StatusUnprocessableEntity)
-		return
-	}
-
-	pos := model.WorkItemPosition{ColumnIdx: columnIdx, ItemIdx: itemIdx}
-
-	if err := app.workspaceModel.WorkItemDelete(itemID, pos); err != nil {
+	if err := app.workspaceModel.WorkItemDelete(itemID); err != nil {
 		switch {
-		case errors.Is(err, model.ErrInvalidPosition):
-			app.clientError(w, http.StatusUnprocessableEntity)
-		case errors.Is(err, model.ErrItemIDMismatch):
-			app.clientError(w, http.StatusConflict)
+		case errors.Is(err, model.ErrWorkItemNotFound):
+			app.clientError(w, http.StatusNotFound)
 		default:
 			app.serverError(w, r, err)
 		}

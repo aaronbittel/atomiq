@@ -67,7 +67,6 @@ func TestDelete(t *testing.T) {
 			name string
 			ws   Workspace
 			id   string
-			pos  WorkItemPosition
 			want Workspace
 		}{
 			{
@@ -76,7 +75,6 @@ func TestDelete(t *testing.T) {
 					column("Column", A),
 				),
 				id:   A.ID,
-				pos:  WorkItemPosition{},
 				want: workspace(column("Column")),
 			},
 			{
@@ -85,7 +83,6 @@ func TestDelete(t *testing.T) {
 					column("Column", A, B),
 				),
 				id:   A.ID,
-				pos:  WorkItemPosition{},
 				want: workspace(column("Column", B)),
 			},
 			{
@@ -94,7 +91,6 @@ func TestDelete(t *testing.T) {
 					column("Column", A, B, C),
 				),
 				id:   B.ID,
-				pos:  WorkItemPosition{ColumnIdx: 0, ItemIdx: 1},
 				want: workspace(column("Column", A, C)),
 			},
 			{
@@ -103,7 +99,6 @@ func TestDelete(t *testing.T) {
 					column("Column", A, B, C),
 				),
 				id:   C.ID,
-				pos:  WorkItemPosition{ColumnIdx: 0, ItemIdx: 2},
 				want: workspace(column("Column", A, B)),
 			},
 			{
@@ -112,8 +107,7 @@ func TestDelete(t *testing.T) {
 					column("Column 1", A, B),
 					column("Column 2", C),
 				),
-				id:  C.ID,
-				pos: WorkItemPosition{ColumnIdx: 1, ItemIdx: 0},
+				id: C.ID,
 				want: workspace(
 					column("Column 1", A, B),
 					column("Column 2"),
@@ -123,7 +117,7 @@ func TestDelete(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				if err := tt.ws.delete(tt.id, tt.pos); err != nil {
+				if err := tt.ws.delete(tt.id); err != nil {
 					t.Fatal(err)
 				}
 
@@ -142,22 +136,9 @@ func TestDelete(t *testing.T) {
 			wantErr error
 		}{
 			{
-				name:    "column index",
-				id:      A.ID,
-				pos:     WorkItemPosition{ColumnIdx: 1},
-				wantErr: ErrInvalidPosition,
-			},
-			{
-				name:    "item index",
-				id:      A.ID,
-				pos:     WorkItemPosition{ColumnIdx: 0, ItemIdx: 1},
-				wantErr: ErrInvalidPosition,
-			},
-			{
 				name:    "ID mismatch",
 				id:      "wrong ID",
-				pos:     WorkItemPosition{},
-				wantErr: ErrItemIDMismatch,
+				wantErr: ErrWorkItemNotFound,
 			},
 		}
 
@@ -165,7 +146,7 @@ func TestDelete(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				ws := workspace(column("Column", A))
 
-				err := ws.delete(tt.id, tt.pos)
+				err := ws.delete(tt.id)
 				if !errors.Is(err, tt.wantErr) {
 					t.Fatalf("expected err %v, got %v", tt.wantErr, err)
 				}

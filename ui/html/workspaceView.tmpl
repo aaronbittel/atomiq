@@ -27,8 +27,6 @@
                     </div>
                     <form action="/work-item/{{$item.ID}}" method="post">
                         <input type="hidden" name="_method" value="DELETE">
-                        <input type="hidden" name="columnIdx" value="{{$columnIdx}}">
-                        <input type="hidden" name="itemIdx" value="{{$itemIdx}}">
                         <button type="submit" class="error bordered-box">X</button>
                     </form>
                 </div>

@@ -62,7 +62,7 @@ func TestWorkItemDelete(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		wm := model.NewWorkspaceModel(workspace(column("Column", A)))
 
-		if err := wm.WorkItemDelete(A.ID, model.WorkItemPosition{}); err != nil {
+		if err := wm.WorkItemDelete(A.ID); err != nil {
 			t.Fatal(err)
 		}
 
@@ -77,9 +77,11 @@ func TestWorkItemDelete(t *testing.T) {
 	t.Run("invalid item id", func(t *testing.T) {
 		wm := model.NewWorkspaceModel(workspace(column("Column", A)))
 
-		err := wm.WorkItemDelete(B.ID, model.WorkItemPosition{})
-		if !errors.Is(err, model.ErrItemIDMismatch) {
-			t.Fatalf("expected %v, got %v", model.ErrItemIDMismatch, err)
+		wantErr := model.ErrWorkItemNotFound
+		err := wm.WorkItemDelete(B.ID)
+
+		if !errors.Is(err, wantErr) {
+			t.Fatalf("expected %v, got %v", wantErr, err)
 		}
 	})
 }

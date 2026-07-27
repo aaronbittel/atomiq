@@ -38,20 +38,13 @@ func (ws *Workspace) add(columnIdx int, name string) error {
 	return nil
 }
 
-func (ws *Workspace) delete(id string, pos WorkItemPosition) error {
-	if !validSliceAccess(pos.ColumnIdx, len(ws.Columns)) {
-		return columnIdxErr(pos.ColumnIdx, len(ws.Columns))
+func (ws *Workspace) delete(id string) error {
+	pos, err := ws.findWorkItemPosition(id)
+	if err != nil {
+		return err
 	}
+
 	items := ws.Columns[pos.ColumnIdx].WorkItems
-	if !validSliceAccess(pos.ItemIdx, len(items)) {
-		return itemIdxErr(pos.ColumnIdx, pos.ItemIdx, len(items))
-	}
-
-	item := items[pos.ItemIdx]
-	if item.ID != id {
-		return ErrItemIDMismatch
-	}
-
 	items = slices.Delete(items, pos.ItemIdx, pos.ItemIdx+1)
 	ws.Columns[pos.ColumnIdx].WorkItems = items
 
@@ -105,6 +98,21 @@ func (ws *Workspace) moveToPosition(id string, from, to WorkItemPosition) error 
 
 	ws.moveWorkItemToPosition(from, to)
 	return nil
+}
+
+func (ws *Workspace) findWorkItemPosition(id string) (WorkItemPosition, error) {
+	for colIdx, col := range ws.Columns {
+		for itemIdx, item := range col.WorkItems {
+			if item.ID == id {
+				return WorkItemPosition{
+					ColumnIdx: colIdx,
+					ItemIdx:   itemIdx,
+				}, nil
+			}
+		}
+	}
+
+	return WorkItemPosition{}, fmt.Errorf("%w: %q", ErrWorkItemNotFound, id)
 }
 
 func (ws *Workspace) clone() Workspace {

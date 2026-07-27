@@ -55,16 +55,12 @@ func (wm *WorkspaceModel) WorkItemAdd(columnIdx int, name string) error {
 	return wm.workspace.add(columnIdx, name)
 }
 
-// WorkItemDelete removes the item at pos.
-//
-// The position must point at an existing item whose ID matches itemID. Invalid
-// positions return ErrInvalidPosition; stale positions that point at a different
-// item return ErrItemIDMismatch.
-func (wm *WorkspaceModel) WorkItemDelete(itemID string, pos WorkItemPosition) error {
+// WorkItemDelete removes the item with itemID.
+func (wm *WorkspaceModel) WorkItemDelete(itemID string) error {
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
 
-	return wm.workspace.delete(itemID, pos)
+	return wm.workspace.delete(itemID)
 }
 
 // WorkItemMoveDirection moves an item one visual step.
