@@ -22,7 +22,7 @@ func TestWorkspaceView(t *testing.T) {
 		view.Columns[0].WorkItems[0].Name = "Mutated"
 
 		got := wm.WorkspaceView()
-		want := workspaceView(columnView("Column", itemView(A)))
+		want := workspaceView(0, columnView("Column", itemView(A)))
 
 		if diff := cmp.Diff(want, got); diff != "" {
 			t.Errorf("workspace view mismatch (-want +got):\n%s", diff)
@@ -66,7 +66,7 @@ func TestWorkItemDelete(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		want := workspaceView(columnView("Column"))
+		want := workspaceView(1, columnView("Column"))
 		got := wm.WorkspaceView()
 
 		if diff := cmp.Diff(want, got); diff != "" {
@@ -94,7 +94,7 @@ func TestWorkItemMoveDirection(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		want := workspaceView(columnView("Column", itemView(B), itemView(A)))
+		want := workspaceView(1, columnView("Column", itemView(B), itemView(A)))
 		got := wm.WorkspaceView()
 
 		if diff := cmp.Diff(want, got); diff != "" {
@@ -111,7 +111,7 @@ func TestNewWorkspaceModel(t *testing.T) {
 		initial.Columns[0].Name = "Mutated"
 		initial.Columns[0].WorkItems[0].Name = "Mutated"
 
-		want := workspaceView(columnView("Column", itemView(A)))
+		want := workspaceView(0, columnView("Column", itemView(A)))
 		got := wm.WorkspaceView()
 
 		if diff := cmp.Diff(want, got); diff != "" {

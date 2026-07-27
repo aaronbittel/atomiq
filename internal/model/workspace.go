@@ -144,7 +144,10 @@ func (ws *Workspace) clone() Workspace {
 			})
 		}
 	}
-	return Workspace{Columns: columns}
+	return Workspace{
+		revision: ws.revision,
+		Columns:  columns,
+	}
 }
 
 func (ws *Workspace) view() WorkspaceView {
@@ -158,7 +161,10 @@ func (ws *Workspace) view() WorkspaceView {
 			})
 		}
 	}
-	return WorkspaceView{Columns: columnViews}
+	return WorkspaceView{
+		Revision: ws.revision,
+		Columns:  columnViews,
+	}
 }
 
 func (ws *Workspace) moveWorkItemToPosition(from, to workItemPosition) {

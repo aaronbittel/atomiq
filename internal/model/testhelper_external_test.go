@@ -28,9 +28,10 @@ func item(id, name string) model.WorkItem {
 	}
 }
 
-func workspaceView(columns ...model.ColumnView) model.WorkspaceView {
+func workspaceView(revision uint64, columns ...model.ColumnView) model.WorkspaceView {
 	return model.WorkspaceView{
-		Columns: columns,
+		Revision: revision,
+		Columns:  columns,
 	}
 }
 

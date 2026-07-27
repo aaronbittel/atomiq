@@ -1,7 +1,8 @@
 package model
 
 type WorkspaceView struct {
-	Columns []ColumnView
+	Columns  []ColumnView
+	Revision uint64
 }
 
 type ColumnView struct {
