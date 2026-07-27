@@ -70,25 +70,21 @@ func (ws *Workspace) moveInDirection(id string, direction MoveDirection) error {
 	return nil
 }
 
-func (ws *Workspace) moveToPosition(id string, from, to WorkItemPosition) error {
-	if err := ws.isValidFromPosition(from); err != nil {
+func (ws *Workspace) moveToPosition(id string, to WorkItemPosition) error {
+	pos, err := ws.findWorkItemPosition(id)
+	if err != nil {
 		return err
-	}
-
-	item := ws.Columns[from.ColumnIdx].WorkItems[from.ItemIdx]
-	if item.ID != id {
-		return ErrItemIDMismatch
 	}
 
 	if err := ws.isValidToPosition(to); err != nil {
 		return err
 	}
 
-	if from == to {
+	if pos == to {
 		return nil
 	}
 
-	ws.moveWorkItemToPosition(from, to)
+	ws.moveWorkItemToPosition(pos, to)
 	return nil
 }
 

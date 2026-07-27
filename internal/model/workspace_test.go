@@ -307,7 +307,6 @@ func TestMoveToPosition(t *testing.T) {
 			name string
 			ws   Workspace
 			id   string
-			from WorkItemPosition
 			to   WorkItemPosition
 			want Workspace
 		}{
@@ -317,9 +316,8 @@ func TestMoveToPosition(t *testing.T) {
 					column("Column 1", A, B),
 					column("Column 2", C),
 				),
-				id:   B.ID,
-				from: position(0, 1),
-				to:   position(1, 1),
+				id: B.ID,
+				to: position(1, 1),
 				want: workspace(
 					column("Column 1", A),
 					column("Column 2", C, B),
@@ -330,9 +328,8 @@ func TestMoveToPosition(t *testing.T) {
 				ws: workspace(
 					column("Column", A, B, C),
 				),
-				id:   C.ID,
-				from: position(0, 2),
-				to:   position(0, 0),
+				id: C.ID,
+				to: position(0, 0),
 				want: workspace(
 					column("Column", C, A, B),
 				),
@@ -342,9 +339,8 @@ func TestMoveToPosition(t *testing.T) {
 				ws: workspace(
 					column("Column", A, B, C),
 				),
-				id:   A.ID,
-				from: position(0, 0),
-				to:   position(0, 2),
+				id: A.ID,
+				to: position(0, 2),
 				want: workspace(
 					column("Column", B, A, C),
 				),
@@ -354,9 +350,8 @@ func TestMoveToPosition(t *testing.T) {
 				ws: workspace(
 					column("Column", A, B, C),
 				),
-				id:   A.ID,
-				from: position(0, 0),
-				to:   position(0, 0),
+				id: A.ID,
+				to: position(0, 0),
 				want: workspace(
 					column("Column", A, B, C),
 				),
@@ -366,9 +361,8 @@ func TestMoveToPosition(t *testing.T) {
 				ws: workspace(
 					column("Column", A, B, C),
 				),
-				id:   A.ID,
-				from: position(0, 0),
-				to:   position(0, 3),
+				id: A.ID,
+				to: position(0, 3),
 				want: workspace(
 					column("Column", B, C, A),
 				),
@@ -378,9 +372,8 @@ func TestMoveToPosition(t *testing.T) {
 				ws: workspace(
 					column("Column", A, B, C),
 				),
-				id:   C.ID,
-				from: position(0, 2),
-				to:   position(0, 0),
+				id: C.ID,
+				to: position(0, 0),
 				want: workspace(
 					column("Column", C, A, B),
 				),
@@ -389,7 +382,7 @@ func TestMoveToPosition(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				err := tt.ws.moveToPosition(tt.id, tt.from, tt.to)
+				err := tt.ws.moveToPosition(tt.id, tt.to)
 				if err != nil {
 					t.Fatalf("WorkItemMove() unexpected error: %v", err)
 				}
@@ -406,38 +399,16 @@ func TestMoveToPosition(t *testing.T) {
 			name    string
 			ws      Workspace
 			id      string
-			from    WorkItemPosition
 			to      WorkItemPosition
 			wantErr error
 		}{
-			{
-				name: "from column",
-				ws: workspace(
-					column("Column", A),
-				),
-				id:      A.ID,
-				from:    position(9, 0),
-				to:      position(0, 0),
-				wantErr: ErrInvalidPosition,
-			},
 			{
 				name: "to column",
 				ws: workspace(
 					column("Column", A),
 				),
 				id:      A.ID,
-				from:    position(0, 0),
 				to:      position(9, 0),
-				wantErr: ErrInvalidPosition,
-			},
-			{
-				name: "from index",
-				ws: workspace(
-					column("Column", A),
-				),
-				id:      A.ID,
-				from:    position(0, 2),
-				to:      position(0, 0),
 				wantErr: ErrInvalidPosition,
 			},
 			{
@@ -447,7 +418,6 @@ func TestMoveToPosition(t *testing.T) {
 					column("Column 2"),
 				),
 				id:      A.ID,
-				from:    position(0, 0),
 				to:      position(1, 2),
 				wantErr: ErrInvalidPosition,
 			},
@@ -457,7 +427,6 @@ func TestMoveToPosition(t *testing.T) {
 					column("Column", A),
 				),
 				id:      A.ID,
-				from:    position(9, 0),
 				to:      position(9, 0),
 				wantErr: ErrInvalidPosition,
 			},
@@ -467,15 +436,14 @@ func TestMoveToPosition(t *testing.T) {
 					column("Column", A),
 				),
 				id:      B.ID,
-				from:    position(0, 0),
 				to:      position(0, 0),
-				wantErr: ErrItemIDMismatch,
+				wantErr: ErrWorkItemNotFound,
 			},
 		}
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				err := tt.ws.moveToPosition(tt.id, tt.from, tt.to)
+				err := tt.ws.moveToPosition(tt.id, tt.to)
 
 				if !errors.Is(err, tt.wantErr) {
 					t.Fatalf("WorkItemMove() expected error: %v, got nil", tt.wantErr)

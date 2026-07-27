@@ -83,17 +83,14 @@ type WorkItemPosition struct {
 
 // WorkItemMovePosition moves an item to an insertion position.
 //
-// The from position must point at an existing item. The to position may point
-// between items or to len(column.WorkItems), which means append.
-//
 // Within the same column, moving an item to its own insertion position or the
 // next insertion position is a no-op. For [A, B, C], moving B to index 1 or 2
 // leaves the column unchanged.
-func (wm *WorkspaceModel) WorkItemMovePosition(itemID string, from, to WorkItemPosition) error {
+func (wm *WorkspaceModel) WorkItemMovePosition(itemID string, to WorkItemPosition) error {
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
 
-	return wm.workspace.moveToPosition(itemID, from, to)
+	return wm.workspace.moveToPosition(itemID, to)
 }
 
 // NewWorkItem creates a work item with a generated short ID.
