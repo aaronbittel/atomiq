@@ -1,61 +1,59 @@
-package model_test
+package model
 
-import "github.com/aaronbittel/atomiq/internal/model"
-
-func workspace(columns ...model.Column) model.Workspace {
-	return model.Workspace{
+func workspace(columns ...Column) Workspace {
+	return Workspace{
 		Columns: columns,
 	}
 }
 
-func column(name string, items ...model.WorkItem) model.Column {
-	var result []model.WorkItem
+func column(name string, items ...WorkItem) Column {
+	result := []WorkItem{}
 
 	for _, item := range items {
 		result = append(result, item)
 	}
 
-	return model.Column{
+	return Column{
 		Name:      name,
 		WorkItems: result,
 	}
 }
 
-func item(id, name string) model.WorkItem {
-	return model.WorkItem{
+func item(id, name string) WorkItem {
+	return WorkItem{
 		ID:   id,
 		Name: name,
 	}
 }
 
-func position(columnIdx, itemIdx int) model.WorkItemPosition {
-	return model.WorkItemPosition{
+func position(columnIdx, itemIdx int) WorkItemPosition {
+	return WorkItemPosition{
 		ColumnIdx: columnIdx,
 		ItemIdx:   itemIdx,
 	}
 }
 
-func workspaceView(columns ...model.ColumnView) model.WorkspaceView {
-	return model.WorkspaceView{
+func workspaceView(columns ...ColumnView) WorkspaceView {
+	return WorkspaceView{
 		Columns: columns,
 	}
 }
 
-func columnView(name string, items ...model.WorkItemView) model.ColumnView {
-	var result []model.WorkItemView
+func columnView(name string, items ...WorkItemView) ColumnView {
+	var result []WorkItemView
 
 	for _, item := range items {
 		result = append(result, item)
 	}
 
-	return model.ColumnView{
+	return ColumnView{
 		Name:      name,
 		WorkItems: result,
 	}
 }
 
-func itemView(item model.WorkItem) model.WorkItemView {
-	return model.WorkItemView{
+func itemView(item WorkItem) WorkItemView {
+	return WorkItemView{
 		ID:   item.ID,
 		Name: item.Name,
 	}
