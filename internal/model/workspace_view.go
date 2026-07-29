@@ -6,6 +6,8 @@ type WorkspaceView struct {
 	Columns []ColumnView
 	// Revision is the version required for the next mutation request.
 	Revision uint64
+	// ID is the id of the active workspace.
+	ID WorkspaceID
 }
 
 // ColumnView is the rendered representation of a workspace column.

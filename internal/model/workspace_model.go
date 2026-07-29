@@ -42,6 +42,7 @@ func (wm *WorkspaceModel) WorkspaceView(workspaceID WorkspaceID) (WorkspaceView,
 	return WorkspaceView{
 		Columns:  wm.workspace.view(),
 		Revision: wm.revision,
+		ID:       workspaceID,
 	}, nil
 }
 

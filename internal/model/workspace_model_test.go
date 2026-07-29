@@ -35,7 +35,7 @@ func TestWorkspaceView(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		want := workspaceView(0, columnView("Column", viewA))
+		want := workspaceView(wm.WorkspaceRootID(), 0, columnView("Column", viewA))
 
 		if diff := cmp.Diff(want, got); diff != "" {
 			t.Errorf("workspace view mismatch (-want +got):\n%s", diff)
@@ -87,7 +87,7 @@ func TestWorkItemDelete(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		want := workspaceView(1, columnView("Column"))
+		want := workspaceView(wm.WorkspaceRootID(), 1, columnView("Column"))
 		got, err := wm.WorkspaceView(wm.WorkspaceRootID())
 		if err != nil {
 			t.Fatal(err)
@@ -118,7 +118,7 @@ func TestWorkItemMoveDirection(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		want := workspaceView(1, columnView("Column", viewB, viewA))
+		want := workspaceView(wm.WorkspaceRootID(), 1, columnView("Column", viewB, viewA))
 		got, err := wm.WorkspaceView(wm.WorkspaceRootID())
 		if err != nil {
 			t.Fatal(err)
@@ -136,7 +136,7 @@ func TestWorkItemMoveDirection(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		want := workspaceView(0, columnView("Column", model.WorkItemView{ID: itemA.ID(), Name: itemAName}))
+		want := workspaceView(wm.WorkspaceRootID(), 0, columnView("Column", model.WorkItemView{ID: itemA.ID(), Name: itemAName}))
 		got, err := wm.WorkspaceView(wm.WorkspaceRootID())
 		if err != nil {
 			t.Fatal(err)
@@ -155,7 +155,7 @@ func TestWorkItemMoveDirection(t *testing.T) {
 			t.Fatalf("expected err %v, got %v", wantErr, err)
 		}
 
-		want := workspaceView(0, columnView("Column", viewA))
+		want := workspaceView(wm.WorkspaceRootID(), 0, columnView("Column", viewA))
 		got, err := wm.WorkspaceView(wm.WorkspaceRootID())
 		if err != nil {
 			t.Fatal(err)
@@ -179,7 +179,7 @@ func TestWorkItemMovePosition(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		want := workspaceView(1, columnView("Column", viewB, viewA))
+		want := workspaceView(wm.WorkspaceRootID(), 1, columnView("Column", viewB, viewA))
 		got, err := wm.WorkspaceView(wm.WorkspaceRootID())
 		if err != nil {
 			t.Fatal(err)
@@ -201,7 +201,7 @@ func TestWorkItemMovePosition(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		want := workspaceView(0, columnView("Column", viewA, viewB))
+		want := workspaceView(wm.WorkspaceRootID(), 0, columnView("Column", viewA, viewB))
 		got, err := wm.WorkspaceView(wm.WorkspaceRootID())
 		if err != nil {
 			t.Fatal(err)
@@ -223,7 +223,7 @@ func TestWorkItemMovePosition(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		want := workspaceView(0, columnView("Column", viewA, viewB))
+		want := workspaceView(wm.WorkspaceRootID(), 0, columnView("Column", viewA, viewB))
 		got, err := wm.WorkspaceView(wm.WorkspaceRootID())
 		if err != nil {
 			t.Fatal(err)
@@ -247,7 +247,7 @@ func TestWorkItemMovePosition(t *testing.T) {
 			t.Fatalf("expected err %v, got %v", wantErr, err)
 		}
 
-		want := workspaceView(0, columnView("Column", viewA, viewB))
+		want := workspaceView(wm.WorkspaceRootID(), 0, columnView("Column", viewA, viewB))
 		got, err := wm.WorkspaceView(wm.WorkspaceRootID())
 		if err != nil {
 			t.Fatal(err)
@@ -266,7 +266,7 @@ func TestSequentialMutationsUseLatestRevision(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	want := workspaceView(1, columnView("Column", viewB, viewA))
+	want := workspaceView(wm.WorkspaceRootID(), 1, columnView("Column", viewB, viewA))
 	got, err := wm.WorkspaceView(wm.WorkspaceRootID())
 	if err != nil {
 		t.Fatal(err)
@@ -280,7 +280,7 @@ func TestSequentialMutationsUseLatestRevision(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	want = workspaceView(2, columnView("Column", viewA))
+	want = workspaceView(wm.WorkspaceRootID(), 2, columnView("Column", viewA))
 	got, err = wm.WorkspaceView(wm.WorkspaceRootID())
 	if err != nil {
 		t.Fatal(err)

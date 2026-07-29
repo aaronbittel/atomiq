@@ -282,6 +282,7 @@ func TestWorkItemMove(t *testing.T) {
 		assertRedirect(t, resp, http.StatusSeeOther, wantLocation)
 
 		want := model.WorkspaceView{
+			ID:       wm.WorkspaceRootID(),
 			Revision: 1,
 			Columns: []model.ColumnView{
 				{
@@ -290,6 +291,7 @@ func TestWorkItemMove(t *testing.T) {
 				},
 			},
 		}
+
 		got, err := wm.WorkspaceView(wm.WorkspaceRootID())
 		if err != nil {
 			t.Fatal(err)

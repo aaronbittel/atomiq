@@ -2,10 +2,11 @@ package model_test
 
 import "github.com/aaronbittel/atomiq/internal/model"
 
-func workspaceView(revision uint64, columns ...model.ColumnView) model.WorkspaceView {
+func workspaceView(id model.WorkspaceID, revision uint64, columns ...model.ColumnView) model.WorkspaceView {
 	return model.WorkspaceView{
 		Revision: revision,
 		Columns:  columns,
+		ID:       id,
 	}
 }
 
