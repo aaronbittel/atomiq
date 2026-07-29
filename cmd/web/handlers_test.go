@@ -188,9 +188,8 @@ func TestWorkItemDelete(t *testing.T) {
 			item := model.NewWorkItem("Item")
 			unknownID := newUnknownWorkItemID(item.ID())
 
-			ws := model.NewWorkspace(model.NewColumn("Backlog", item))
-
-			app := newTestApplication(t, model.NewWorkspaceModel(ws))
+			wm := model.NewWorkspaceModel(model.NewWorkspace(model.NewColumn("Backlog", item)))
+			app := newTestApplication(t, wm)
 			ts := newTestServer(t, app.routes())
 			defer ts.Close()
 
@@ -198,7 +197,7 @@ func TestWorkItemDelete(t *testing.T) {
 			form.Set("_method", "DELETE")
 			form.Set("revision", "0")
 
-			resp := ts.postForm(t, "/work-item/"+unknownID.String(), form)
+			resp := ts.postForm(t, fmt.Sprintf("/workspaces%s/work-items/%s", wm.WorkspaceRootID(), unknownID), form)
 
 			assertStatusCode(t, http.StatusNotFound, resp.StatusCode)
 		})
