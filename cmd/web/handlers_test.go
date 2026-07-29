@@ -132,8 +132,15 @@ func TestWorkItemDelete(t *testing.T) {
 	t.Run("valid work item deletion", func(t *testing.T) {
 		t.Chdir("../..")
 
-		workItem1 := model.NewWorkItem("Todo 1")
-		workItem2 := model.NewWorkItem("Todo 2")
+		const (
+			workItem1Name = "Todo 1"
+			workItem2Name = "Todo 2"
+		)
+
+		var (
+			workItem1 = model.NewWorkItem(workItem1Name)
+			workItem2 = model.NewWorkItem(workItem2Name)
+		)
 
 		workspaceModel := model.NewWorkspaceModel(
 			model.NewWorkspace(
@@ -149,14 +156,14 @@ func TestWorkItemDelete(t *testing.T) {
 		form.Set("_method", "DELETE")
 		form.Set("revision", "0")
 
-		resp := ts.postForm(t, "/work-item/"+workItem1.ID.String(), form)
+		resp := ts.postForm(t, "/work-item/"+workItem1.ID().String(), form)
 		assertRedirect(t, resp, http.StatusSeeOther, "/")
 
 		resp = ts.get(t, "/")
 		assertStatusCode(t, http.StatusOK, resp.StatusCode)
 
-		assertNotContains(t, resp.Body, workItem1.Name)
-		assertContains(t, resp.Body, workItem2.Name)
+		assertNotContains(t, resp.Body, workItem1Name)
+		assertContains(t, resp.Body, workItem2Name)
 	})
 
 	t.Run("client error", func(t *testing.T) {
@@ -175,7 +182,7 @@ func TestWorkItemDelete(t *testing.T) {
 
 		t.Run("item not found", func(t *testing.T) {
 			item := model.NewWorkItem("Item")
-			unknownID := newUnknownWorkItemID(t, item.ID)
+			unknownID := newUnknownWorkItemID(t, item.ID())
 
 			ws := model.NewWorkspace(model.NewColumn("Backlog", item))
 
@@ -231,7 +238,7 @@ func TestWorkItemDelete(t *testing.T) {
 
 				tt.mutate(form)
 
-				resp := ts.postForm(t, "/work-item/"+item.ID.String(), form)
+				resp := ts.postForm(t, "/work-item/"+item.ID().String(), form)
 				assertStatusCode(t, tt.wantCode, resp.StatusCode)
 			})
 		}
@@ -242,11 +249,20 @@ func TestWorkItemMove(t *testing.T) {
 	t.Run("valid move", func(t *testing.T) {
 		t.Chdir("../../")
 
-		A := model.NewWorkItem("A")
-		B := model.NewWorkItem("B")
+		const (
+			nameA = "A"
+			nameB = "B"
+		)
+
+		var (
+			itemA = model.NewWorkItem(nameA)
+			itemB = model.NewWorkItem(nameB)
+			viewA = model.WorkItemView{ID: itemA.ID(), Name: nameA}
+			viewB = model.WorkItemView{ID: itemB.ID(), Name: nameB}
+		)
 
 		ws := model.NewWorkspace(
-			model.NewColumn("Backlog", A, B),
+			model.NewColumn("Backlog", itemA, itemB),
 		)
 		wm := model.NewWorkspaceModel(ws)
 
@@ -259,24 +275,15 @@ func TestWorkItemMove(t *testing.T) {
 		form.Set("revision", "0")
 		form.Set("direction", "down")
 
-		resp := ts.postForm(t, fmt.Sprintf("/work-item/%s/move", A.ID), form)
+		resp := ts.postForm(t, fmt.Sprintf("/work-item/%s/move", itemA.ID()), form)
 		assertRedirect(t, resp, http.StatusSeeOther, "/")
 
 		want := model.WorkspaceView{
 			Revision: 1,
 			Columns: []model.ColumnView{
 				{
-					Name: "Backlog",
-					WorkItems: []model.WorkItemView{
-						{
-							ID:   B.ID,
-							Name: B.Name,
-						},
-						{
-							ID:   A.ID,
-							Name: A.Name,
-						},
-					},
+					Name:      "Backlog",
+					WorkItems: []model.WorkItemView{viewB, viewA},
 				},
 			},
 		}
@@ -331,7 +338,7 @@ func TestWorkItemMove(t *testing.T) {
 			},
 			{
 				name:     "item not found",
-				url:      fmt.Sprintf("/work-item/%s/move", newUnknownWorkItemID(t, item.ID)),
+				url:      fmt.Sprintf("/work-item/%s/move", newUnknownWorkItemID(t, item.ID())),
 				wantCode: http.StatusNotFound,
 			},
 		}
@@ -354,7 +361,7 @@ func TestWorkItemMove(t *testing.T) {
 					tt.mutateForm(form)
 				}
 
-				url := fmt.Sprintf("/work-item/%s/move", item.ID)
+				url := fmt.Sprintf("/work-item/%s/move", item.ID())
 				if tt.url != "" {
 					url = tt.url
 				}
@@ -375,7 +382,7 @@ func newUnknownWorkItemID(t *testing.T, existing model.WorkItemID) model.WorkIte
 	t.Helper()
 
 	for {
-		id := model.NewWorkItem("Not inserted").ID
+		id := model.NewWorkItem("Not inserted").ID()
 		if id != existing {
 			return id
 		}

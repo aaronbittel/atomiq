@@ -68,21 +68,25 @@ func (c Column) clone() Column {
 
 // WorkItem is one unit of work in a column.
 type WorkItem struct {
-	ID   WorkItemID
-	Name string
+	id   WorkItemID
+	name string
+}
+
+func (wi WorkItem) ID() WorkItemID {
+	return wi.id
 }
 
 func NewWorkItem(name string) WorkItem {
 	return WorkItem{
-		ID:   newWorkItemID(),
-		Name: name,
+		id:   newWorkItemID(),
+		name: name,
 	}
 }
 
 func (wi WorkItem) clone() WorkItem {
 	return WorkItem{
-		ID:   wi.ID,
-		Name: wi.Name,
+		id:   wi.id,
+		name: wi.name,
 	}
 }
 
@@ -180,7 +184,7 @@ func sameEffectivePosition(from, to workItemPosition) bool {
 func (ws *Workspace) findWorkItemPosition(id WorkItemID) (workItemPosition, error) {
 	for colIdx, col := range ws.columns {
 		for itemIdx, item := range col.workItems {
-			if item.ID == id {
+			if item.id == id {
 				return workItemPosition{
 					ColumnIdx: colIdx,
 					ItemIdx:   itemIdx,
@@ -197,7 +201,10 @@ func (ws *Workspace) view() []ColumnView {
 	for i, col := range ws.columns {
 		columns[i].Name = col.name
 		for _, wi := range col.workItems {
-			columns[i].WorkItems = append(columns[i].WorkItems, WorkItemView(wi))
+			columns[i].WorkItems = append(columns[i].WorkItems, WorkItemView{
+				ID:   wi.id,
+				Name: wi.name,
+			})
 		}
 	}
 	return columns

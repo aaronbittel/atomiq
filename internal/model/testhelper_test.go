@@ -20,8 +20,8 @@ func column(name string, items ...WorkItem) Column {
 
 func item(id WorkItemID, name string) WorkItem {
 	return WorkItem{
-		ID:   id,
-		Name: name,
+		id:   id,
+		name: name,
 	}
 }
 

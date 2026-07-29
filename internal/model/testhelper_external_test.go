@@ -19,7 +19,3 @@ func columnView(name string, items ...model.WorkItemView) model.ColumnView {
 		WorkItems: result,
 	}
 }
-
-func itemView(item model.WorkItem) model.WorkItemView {
-	return model.WorkItemView(item)
-}
