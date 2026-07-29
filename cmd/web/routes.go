@@ -13,10 +13,11 @@ func (app *application) routes() http.Handler {
 	mux.HandleFunc("GET /healthz", http.HandlerFunc(healthz))
 
 	mux.HandleFunc("GET /{$}", app.home)
-	mux.HandleFunc("GET /workspaces/{id}", app.workspaceView)
-	mux.HandleFunc("POST /work-item", app.workItemPost)
-	mux.HandleFunc("DELETE /work-item/{id}", app.workItemDelete)
-	mux.HandleFunc("PATCH /work-item/{id}/move", app.workItemMove)
+
+	mux.HandleFunc("GET /workspaces/{workspaceID}", app.workspaceView)
+	mux.HandleFunc("POST /workspaces/{workspaceID}/work-items", app.workItemPost)
+	mux.HandleFunc("DELETE /workspaces/{workspaceID}/work-items/{id}", app.workItemDelete)
+	mux.HandleFunc("PATCH /workspaces/{workspaceID}/work-items/{id}/move", app.workItemMove)
 
 	return app.recoverPanic(app.methodOverride(app.logRequest(app.sessionManager.LoadAndSave(mux))))
 }

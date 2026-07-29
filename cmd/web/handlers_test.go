@@ -31,7 +31,7 @@ func TestWorkItemPost(t *testing.T) {
 		form.Set("name", "New Work Item")
 		form.Set("revision", "0")
 
-		resp := ts.postForm(t, "/work-item", form)
+		resp := ts.postForm(t, fmt.Sprintf("/workspaces/%s/work-items", wm.WorkspaceRootID()), form)
 		wantLocation := "/workspaces/" + wm.WorkspaceRootID().String()
 		assertRedirect(t, resp, http.StatusSeeOther, wantLocation)
 
@@ -60,7 +60,7 @@ func TestWorkItemPost(t *testing.T) {
 			form.Set("name", "   ")
 			form.Set("revision", "0")
 
-			resp := ts.postForm(t, "/work-item", form)
+			resp := ts.postForm(t, fmt.Sprintf("/workspaces/%s/work-items", wm.WorkspaceRootID()), form)
 			wantLocation := "/workspaces/" + wm.WorkspaceRootID().String()
 			assertRedirect(t, resp, http.StatusSeeOther, wantLocation)
 
@@ -76,7 +76,6 @@ func TestWorkItemPost(t *testing.T) {
 
 		tests := []struct {
 			name     string
-			ws       model.Workspace
 			mutate   func(form url.Values)
 			wantCode int
 		}{
@@ -112,7 +111,8 @@ func TestWorkItemPost(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				app := newTestApplication(t, model.NewWorkspaceModel(tt.ws))
+				wm := model.NewWorkspaceModel(model.NewWorkspace())
+				app := newTestApplication(t, wm)
 				ts := newTestServer(t, app.routes())
 				defer ts.Close()
 
@@ -123,7 +123,7 @@ func TestWorkItemPost(t *testing.T) {
 
 				tt.mutate(form)
 
-				resp := ts.postForm(t, "/work-item", form)
+				resp := ts.postForm(t, fmt.Sprintf("/workspaces/%s/work-items", wm.WorkspaceRootID()), form)
 				assertStatusCode(t, tt.wantCode, resp.StatusCode)
 			})
 		}
@@ -158,7 +158,7 @@ func TestWorkItemDelete(t *testing.T) {
 		form.Set("_method", "DELETE")
 		form.Set("revision", "0")
 
-		resp := ts.postForm(t, "/work-item/"+workItem1.ID().String(), form)
+		resp := ts.postForm(t, fmt.Sprintf("/workspaces/%s/work-items/%s", wm.WorkspaceRootID(), workItem1.ID()), form)
 		wantLocation := "/workspaces/" + wm.WorkspaceRootID().String()
 		assertRedirect(t, resp, http.StatusSeeOther, wantLocation)
 
@@ -171,7 +171,8 @@ func TestWorkItemDelete(t *testing.T) {
 
 	t.Run("client error", func(t *testing.T) {
 		t.Run("item id format", func(t *testing.T) {
-			app := newTestApplication(t, &model.WorkspaceModel{})
+			wm := model.NewWorkspaceModel(model.NewWorkspace())
+			app := newTestApplication(t, wm)
 			ts := newTestServer(t, app.routes())
 			defer ts.Close()
 
@@ -179,13 +180,13 @@ func TestWorkItemDelete(t *testing.T) {
 			form.Set("_method", "DELETE")
 			form.Set("revision", "0")
 
-			resp := ts.postForm(t, "/work-item/invalid-format", form)
+			resp := ts.postForm(t, fmt.Sprintf("/workspaces/%s/work-items/invalid-format", wm.WorkspaceRootID()), form)
 			assertStatusCode(t, http.StatusUnprocessableEntity, resp.StatusCode)
 		})
 
 		t.Run("item not found", func(t *testing.T) {
 			item := model.NewWorkItem("Item")
-			unknownID := newUnknownWorkItemID(t, item.ID())
+			unknownID := newUnknownWorkItemID(item.ID())
 
 			ws := model.NewWorkspace(model.NewColumn("Backlog", item))
 
@@ -226,12 +227,11 @@ func TestWorkItemDelete(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				item := model.NewWorkItem("item")
-
-				ws := model.NewWorkspace(
+				wm := model.NewWorkspaceModel(model.NewWorkspace(
 					model.NewColumn("Backlog", item),
-				)
+				))
 
-				app := newTestApplication(t, model.NewWorkspaceModel(ws))
+				app := newTestApplication(t, wm)
 				ts := newTestServer(t, app.routes())
 				defer ts.Close()
 
@@ -241,7 +241,7 @@ func TestWorkItemDelete(t *testing.T) {
 
 				tt.mutate(form)
 
-				resp := ts.postForm(t, "/work-item/"+item.ID().String(), form)
+				resp := ts.postForm(t, fmt.Sprintf("/workspaces/%s/work-items/%s", wm.WorkspaceRootID(), item.ID()), form)
 				assertStatusCode(t, tt.wantCode, resp.StatusCode)
 			})
 		}
@@ -264,10 +264,9 @@ func TestWorkItemMove(t *testing.T) {
 			viewB = model.WorkItemView{ID: itemB.ID(), Name: nameB}
 		)
 
-		ws := model.NewWorkspace(
+		wm := model.NewWorkspaceModel(model.NewWorkspace(
 			model.NewColumn("Backlog", itemA, itemB),
-		)
-		wm := model.NewWorkspaceModel(ws)
+		))
 
 		app := newTestApplication(t, wm)
 		ts := newTestServer(t, app.routes())
@@ -278,7 +277,7 @@ func TestWorkItemMove(t *testing.T) {
 		form.Set("revision", "0")
 		form.Set("direction", "down")
 
-		resp := ts.postForm(t, fmt.Sprintf("/work-item/%s/move", itemA.ID()), form)
+		resp := ts.postForm(t, fmt.Sprintf("/workspaces/%s/work-items/%s/move", wm.WorkspaceRootID(), itemA.ID()), form)
 		wantLocation := "/workspaces/" + wm.WorkspaceRootID().String()
 
 		assertRedirect(t, resp, http.StatusSeeOther, wantLocation)
@@ -310,11 +309,9 @@ func TestWorkItemMove(t *testing.T) {
 	t.Run("client error", func(t *testing.T) {
 		t.Chdir("../../")
 
-		item := model.NewWorkItem("Item")
-
 		tests := []struct {
 			name       string
-			url        string
+			mutateUrl  func(*model.WorkspaceModel, model.WorkItem) string
 			mutateForm func(from url.Values)
 			wantCode   int
 		}{
@@ -340,19 +337,25 @@ func TestWorkItemMove(t *testing.T) {
 				wantCode: http.StatusConflict,
 			},
 			{
-				name:     "invalid id format",
-				url:      "/work-item/invalid-format/move",
+				name: "invalid id format",
+				mutateUrl: func(wm *model.WorkspaceModel, item model.WorkItem) string {
+					t.Helper()
+					return fmt.Sprintf("/workspaces/%s/work-items/invalid-format/move", wm.WorkspaceRootID())
+				},
 				wantCode: http.StatusUnprocessableEntity,
 			},
 			{
-				name:     "item not found",
-				url:      fmt.Sprintf("/work-item/%s/move", newUnknownWorkItemID(t, item.ID())),
+				name: "item not found",
+				mutateUrl: func(wm *model.WorkspaceModel, item model.WorkItem) string {
+					return fmt.Sprintf("/workspaces/%s/work-items/%s/move", wm.WorkspaceRootID(), newUnknownWorkItemID(item.ID()))
+				},
 				wantCode: http.StatusNotFound,
 			},
 		}
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
+				item := model.NewWorkItem("Item")
 				wm := model.NewWorkspaceModel(
 					model.NewWorkspace(
 						model.NewColumn("Backlog", item),
@@ -371,9 +374,9 @@ func TestWorkItemMove(t *testing.T) {
 					tt.mutateForm(form)
 				}
 
-				url := fmt.Sprintf("/work-item/%s/move", item.ID())
-				if tt.url != "" {
-					url = tt.url
+				url := fmt.Sprintf("/workspaces/%s/work-items/%s/move", wm.WorkspaceRootID(), item.ID())
+				if tt.mutateUrl != nil {
+					url = tt.mutateUrl(wm, item)
 				}
 
 				resp := ts.postForm(t, url, form)
@@ -414,9 +417,7 @@ func TestWorkspaceView(t *testing.T) {
 	assertStatusCode(t, http.StatusOK, resp.StatusCode)
 }
 
-func newUnknownWorkItemID(t *testing.T, existing model.WorkItemID) model.WorkItemID {
-	t.Helper()
-
+func newUnknownWorkItemID(existing model.WorkItemID) model.WorkItemID {
 	for {
 		id := model.NewWorkItem("Not inserted").ID()
 		if id != existing {

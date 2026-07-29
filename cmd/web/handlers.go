@@ -41,7 +41,7 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) workspaceView(w http.ResponseWriter, r *http.Request) {
-	workspaceID, err := model.ParseWorkspaceID(r.PathValue("id"))
+	workspaceID, err := model.ParseWorkspaceID(r.PathValue("workspaceID"))
 	if err != nil {
 		app.clientError(w, http.StatusUnprocessableEntity)
 		return
@@ -58,7 +58,7 @@ func (app *application) workspaceView(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, model.ErrWorkspaceNotFound):
-			http.NotFound(w, r)
+			app.clientError(w, http.StatusNotFound)
 		default:
 			app.serverError(w, r, err)
 		}
@@ -85,6 +85,12 @@ func (app *application) workspaceView(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) workItemPost(w http.ResponseWriter, r *http.Request) {
+	workspaceID, err := model.ParseWorkspaceID(r.PathValue("workspaceID"))
+	if err != nil {
+		app.clientError(w, http.StatusUnprocessableEntity)
+		return
+	}
+
 	if err := r.ParseForm(); err != nil {
 		app.clientError(w, http.StatusUnprocessableEntity)
 		return
@@ -104,8 +110,10 @@ func (app *application) workItemPost(w http.ResponseWriter, r *http.Request) {
 
 	workItemName := r.PostForm.Get("name")
 
-	if err := app.workspaceModel.WorkItemAdd(revision, columnIdx, workItemName); err != nil {
+	if err := app.workspaceModel.WorkItemAdd(workspaceID, revision, columnIdx, workItemName); err != nil {
 		switch {
+		case errors.Is(err, model.ErrWorkspaceNotFound):
+			app.clientError(w, http.StatusNotFound)
 		case errors.Is(err, model.ErrInvalidPosition):
 			app.clientError(w, http.StatusUnprocessableEntity)
 		case errors.Is(err, model.ErrInvalidWorkItemName):
@@ -120,11 +128,16 @@ func (app *application) workItemPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	workspaceID := app.workspaceModel.WorkspaceRootID()
 	http.Redirect(w, r, "/workspaces/"+workspaceID.String(), http.StatusSeeOther)
 }
 
 func (app *application) workItemDelete(w http.ResponseWriter, r *http.Request) {
+	workspaceID, err := model.ParseWorkspaceID(r.PathValue("workspaceID"))
+	if err != nil {
+		app.clientError(w, http.StatusUnprocessableEntity)
+		return
+	}
+
 	if err := r.ParseForm(); err != nil {
 		app.clientError(w, http.StatusUnprocessableEntity)
 		return
@@ -142,8 +155,10 @@ func (app *application) workItemDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := app.workspaceModel.WorkItemDelete(revision, itemID); err != nil {
+	if err := app.workspaceModel.WorkItemDelete(workspaceID, revision, itemID); err != nil {
 		switch {
+		case errors.Is(err, model.ErrWorkspaceNotFound):
+			app.clientError(w, http.StatusNotFound)
 		case errors.Is(err, model.ErrWorkItemNotFound):
 			app.clientError(w, http.StatusNotFound)
 		case errors.Is(err, model.ErrRevisionConflict):
@@ -154,11 +169,16 @@ func (app *application) workItemDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	workspaceID := app.workspaceModel.WorkspaceRootID()
 	http.Redirect(w, r, "/workspaces/"+workspaceID.String(), http.StatusSeeOther)
 }
 
 func (app *application) workItemMove(w http.ResponseWriter, r *http.Request) {
+	workspaceID, err := model.ParseWorkspaceID(r.PathValue("workspaceID"))
+	if err != nil {
+		app.clientError(w, http.StatusUnprocessableEntity)
+		return
+	}
+
 	if err := r.ParseForm(); err != nil {
 		app.clientError(w, http.StatusUnprocessableEntity)
 		return
@@ -182,8 +202,10 @@ func (app *application) workItemMove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := app.workspaceModel.WorkItemMoveDirection(revision, itemID, direction); err != nil {
+	if err := app.workspaceModel.WorkItemMoveDirection(workspaceID, revision, itemID, direction); err != nil {
 		switch {
+		case errors.Is(err, model.ErrWorkspaceNotFound):
+			app.clientError(w, http.StatusNotFound)
 		case errors.Is(err, model.ErrWorkItemNotFound):
 			app.clientError(w, http.StatusNotFound)
 		case errors.Is(err, model.ErrRevisionConflict):
@@ -194,7 +216,6 @@ func (app *application) workItemMove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	workspaceID := app.workspaceModel.WorkspaceRootID()
 	http.Redirect(w, r, "/workspaces/"+workspaceID.String(), http.StatusSeeOther)
 }
 

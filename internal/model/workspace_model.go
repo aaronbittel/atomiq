@@ -53,15 +53,15 @@ func (wm *WorkspaceModel) WorkspaceRootID() WorkspaceID {
 }
 
 // WorkItemAdd trims and appends a new item to the selected column.
-func (wm *WorkspaceModel) WorkItemAdd(expectedRevision uint64, columnIdx int, name string) error {
-	return wm.mutate(expectedRevision, func(w *Workspace) (bool, error) {
+func (wm *WorkspaceModel) WorkItemAdd(workspaceID WorkspaceID, expectedRevision uint64, columnIdx int, name string) error {
+	return wm.mutate(workspaceID, expectedRevision, func(w *Workspace) (bool, error) {
 		return w.add(columnIdx, name)
 	})
 }
 
 // WorkItemDelete removes the item with itemID.
-func (wm *WorkspaceModel) WorkItemDelete(expectedRevision uint64, itemID WorkItemID) error {
-	return wm.mutate(expectedRevision, func(w *Workspace) (bool, error) {
+func (wm *WorkspaceModel) WorkItemDelete(workspaceID WorkspaceID, expectedRevision uint64, itemID WorkItemID) error {
+	return wm.mutate(workspaceID, expectedRevision, func(w *Workspace) (bool, error) {
 		return w.delete(itemID)
 	})
 }
@@ -70,8 +70,8 @@ func (wm *WorkspaceModel) WorkItemDelete(expectedRevision uint64, itemID WorkIte
 //
 // Moves blocked by a workspace boundary are successful no-ops and leave the revision
 // unchanged.
-func (wm *WorkspaceModel) WorkItemMoveDirection(expectedRevision uint64, itemID WorkItemID, direction MoveDirection) error {
-	return wm.mutate(expectedRevision, func(w *Workspace) (bool, error) {
+func (wm *WorkspaceModel) WorkItemMoveDirection(workspaceID WorkspaceID, expectedRevision uint64, itemID WorkItemID, direction MoveDirection) error {
+	return wm.mutate(workspaceID, expectedRevision, func(w *Workspace) (bool, error) {
 		return w.moveInDirection(itemID, direction)
 	})
 }
@@ -81,16 +81,20 @@ func (wm *WorkspaceModel) WorkItemMoveDirection(expectedRevision uint64, itemID 
 // Within the same column, moving an item to its current insertion position or the
 // following insertion position is a no-op. For [A, B, C], moving B to index 1 or 2
 // leaves the column and revision unchanged.
-func (wm *WorkspaceModel) WorkItemMovePosition(expectedRevision uint64, itemID WorkItemID, insertPoint WorkItemInsertionPoint) error {
-	return wm.mutate(expectedRevision, func(w *Workspace) (bool, error) {
+func (wm *WorkspaceModel) WorkItemMovePosition(workspaceID WorkspaceID, expectedRevision uint64, itemID WorkItemID, insertPoint WorkItemInsertionPoint) error {
+	return wm.mutate(workspaceID, expectedRevision, func(w *Workspace) (bool, error) {
 		return w.moveToPosition(itemID, insertPoint)
 	})
 }
 
 // mutate applies mutation when expectedRevision matches the current revision.
-func (wm *WorkspaceModel) mutate(expectedRevision uint64, mutation func(*Workspace) (bool, error)) error {
+func (wm *WorkspaceModel) mutate(workspaceID WorkspaceID, expectedRevision uint64, mutation func(*Workspace) (bool, error)) error {
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
+
+	if workspaceID != wm.rootWorkspaceID {
+		return ErrWorkspaceNotFound
+	}
 
 	if wm.revision != expectedRevision {
 		return fmt.Errorf("%w: expected %d, actual %d", ErrRevisionConflict, expectedRevision, wm.revision)
