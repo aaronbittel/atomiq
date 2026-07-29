@@ -13,7 +13,7 @@ func (app *application) routes() http.Handler {
 	mux.HandleFunc("GET /healthz", http.HandlerFunc(healthz))
 
 	mux.HandleFunc("GET /{$}", app.home)
-
+	mux.HandleFunc("GET /workspaces/{$}", app.workspaceRoot)
 	mux.HandleFunc("GET /workspaces/{workspaceID}", app.workspaceView)
 	mux.HandleFunc("POST /workspaces/{workspaceID}/work-items", app.workItemPost)
 	mux.HandleFunc("DELETE /workspaces/{workspaceID}/work-items/{id}", app.workItemDelete)

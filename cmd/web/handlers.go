@@ -36,6 +36,10 @@ type ColumnErr struct {
 }
 
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "/workspaces/", http.StatusSeeOther)
+}
+
+func (app *application) workspaceRoot(w http.ResponseWriter, r *http.Request) {
 	rootID := app.workspaceModel.WorkspaceRootID().String()
 	http.Redirect(w, r, "/workspaces/"+rootID, http.StatusSeeOther)
 }

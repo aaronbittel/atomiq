@@ -392,7 +392,7 @@ func TestWorkItemMove(t *testing.T) {
 }
 
 func TestHome(t *testing.T) {
-	t.Run("redirects to root workspace", func(t *testing.T) {
+	t.Run("redirects to workspace root", func(t *testing.T) {
 		wm := model.NewWorkspaceModel(model.NewWorkspace())
 
 		app := newTestApplication(t, wm)
@@ -400,6 +400,19 @@ func TestHome(t *testing.T) {
 		defer ts.Close()
 
 		resp := ts.get(t, "/")
+		assertRedirect(t, resp, http.StatusSeeOther, "/workspaces/")
+	})
+}
+
+func TestWorkspaceRoot(t *testing.T) {
+	t.Run("redirects to root workspace", func(t *testing.T) {
+		wm := model.NewWorkspaceModel(model.NewWorkspace())
+
+		app := newTestApplication(t, wm)
+		ts := newTestServer(t, app.routes())
+		defer ts.Close()
+
+		resp := ts.get(t, "/workspaces/")
 		assertRedirect(t, resp, http.StatusSeeOther, "/workspaces/"+wm.WorkspaceRootID().String())
 	})
 }
