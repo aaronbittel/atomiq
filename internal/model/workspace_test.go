@@ -28,7 +28,7 @@ func TestAdd(t *testing.T) {
 			t.Fatal("ws should have been updated")
 		}
 
-		items := ws.columns[0].WorkItems
+		items := ws.columns[0].workItems
 
 		if len(items) != 2 {
 			t.Fatalf("expected 2 work items, got %d", len(items))
@@ -58,9 +58,7 @@ func TestAdd(t *testing.T) {
 			t.Fatal("expected workspace not to be updated")
 		}
 
-		if diff := cmp.Diff(want, ws, cmp.AllowUnexported(Workspace{})); diff != "" {
-			t.Errorf("workspace mismatch (-want +got):\n%s", diff)
-		}
+		assertWorkspaceEqual(t, want, ws)
 	})
 
 	t.Run("invalid column", func(t *testing.T) {
@@ -136,9 +134,7 @@ func TestDelete(t *testing.T) {
 					t.Fatalf("expected workspace to be updated")
 				}
 
-				if diff := cmp.Diff(tt.want, tt.ws, cmp.AllowUnexported(Workspace{})); diff != "" {
-					t.Errorf("workspace mismatch (-want +got):\n%s", diff)
-				}
+				assertWorkspaceEqual(t, tt.want, tt.ws)
 			})
 		}
 	})
@@ -171,9 +167,7 @@ func TestDelete(t *testing.T) {
 
 				want := workspaceWithID(testWorkspaceID, column("Column", A))
 
-				if diff := cmp.Diff(want, ws, cmp.AllowUnexported(Workspace{})); diff != "" {
-					t.Errorf("workspace mismatch (-want +got):\n%s", diff)
-				}
+				assertWorkspaceEqual(t, want, ws)
 			})
 		}
 	})
@@ -196,9 +190,7 @@ func TestMoveInDirection(t *testing.T) {
 
 				want := workspaceWithID(testWorkspaceID, column("Column", A))
 
-				if diff := cmp.Diff(want, ws, cmp.AllowUnexported(Workspace{})); diff != "" {
-					t.Errorf("workspace mismatch (-want +got):\n%s", diff)
-				}
+				assertWorkspaceEqual(t, want, ws)
 			})
 		}
 	})
@@ -264,9 +256,7 @@ func TestMoveInDirection(t *testing.T) {
 					t.Fatalf("expected workspace to be updated")
 				}
 
-				if diff := cmp.Diff(tt.want, tt.ws, cmp.AllowUnexported(Workspace{})); diff != "" {
-					t.Errorf("workspace mismatch (-want +got):\n%s", diff)
-				}
+				assertWorkspaceEqual(t, tt.want, tt.ws)
 			})
 		}
 	})
@@ -391,9 +381,7 @@ func TestMoveToPosition(t *testing.T) {
 					t.Fatalf("expected updated to be %v, got %v", tt.wantUpdated, updated)
 				}
 
-				if diff := cmp.Diff(tt.want, tt.ws, cmp.AllowUnexported(Workspace{})); diff != "" {
-					t.Errorf("workspace mismatch (-want +got):\n%s", diff)
-				}
+				assertWorkspaceEqual(t, tt.want, tt.ws)
 			})
 		}
 	})
@@ -505,5 +493,13 @@ func TestFindWorkItemPosition(t *testing.T) {
 				t.Errorf("expected position %v, got %v", tt.want, pos)
 			}
 		})
+	}
+}
+
+func assertWorkspaceEqual(t *testing.T, want, got Workspace) {
+	t.Helper()
+
+	if diff := cmp.Diff(want, got, cmp.AllowUnexported(Workspace{}, Column{}, WorkItem{})); diff != "" {
+		t.Errorf("workspace mismatch (-want +got):\n%s", diff)
 	}
 }

@@ -13,8 +13,8 @@ func column(name string, items ...WorkItem) Column {
 	result = append(result, items...)
 
 	return Column{
-		Name:      name,
-		WorkItems: result,
+		name:      name,
+		workItems: result,
 	}
 }
 
