@@ -9,8 +9,7 @@ import (
 // Workspace contains the columns and work items in one work context.
 // Its revision is managed exclusively by WorkspaceModel.
 type Workspace struct {
-	Columns  []Column
-	revision uint64
+	Columns []Column
 }
 
 // Column groups work items under one name.
@@ -142,24 +141,18 @@ func (ws *Workspace) clone() Workspace {
 			})
 		}
 	}
-	return Workspace{
-		revision: ws.revision,
-		Columns:  columns,
-	}
+	return Workspace{Columns: columns}
 }
 
-func (ws *Workspace) view() WorkspaceView {
-	columnViews := make([]ColumnView, len(ws.Columns))
+func (ws *Workspace) view() []ColumnView {
+	columns := make([]ColumnView, len(ws.Columns))
 	for i, col := range ws.Columns {
-		columnViews[i].Name = col.Name
+		columns[i].Name = col.Name
 		for _, wi := range col.WorkItems {
-			columnViews[i].WorkItems = append(columnViews[i].WorkItems, WorkItemView(wi))
+			columns[i].WorkItems = append(columns[i].WorkItems, WorkItemView(wi))
 		}
 	}
-	return WorkspaceView{
-		Revision: ws.revision,
-		Columns:  columnViews,
-	}
+	return columns
 }
 
 func (ws *Workspace) moveWorkItemToPosition(from, to workItemPosition) {

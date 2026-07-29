@@ -15,6 +15,7 @@ import (
 type WorkspaceModel struct {
 	mu        sync.RWMutex
 	workspace Workspace
+	revision  uint64
 }
 
 // MoveDirection describes a visual move in the rendered workspace.
@@ -48,7 +49,10 @@ func (wm *WorkspaceModel) WorkspaceView() WorkspaceView {
 	wm.mu.RLock()
 	defer wm.mu.RUnlock()
 
-	return wm.workspace.view()
+	return WorkspaceView{
+		Columns:  wm.workspace.view(),
+		Revision: wm.revision,
+	}
 }
 
 // WorkItemAdd trims and appends a new item to the selected column.
@@ -95,13 +99,8 @@ func (wm *WorkspaceModel) mutate(expectedRevision uint64, mutation func(*Workspa
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
 
-	if wm.workspace.revision != expectedRevision {
-		return fmt.Errorf(
-			"%w: expected %d, actual %d",
-			ErrRevisionConflict,
-			expectedRevision,
-			wm.workspace.revision,
-		)
+	if wm.revision != expectedRevision {
+		return fmt.Errorf("%w: expected %d, actual %d", ErrRevisionConflict, expectedRevision, wm.revision)
 	}
 
 	updated, err := mutation(&wm.workspace)
@@ -110,7 +109,7 @@ func (wm *WorkspaceModel) mutate(expectedRevision uint64, mutation func(*Workspa
 	}
 
 	if updated {
-		wm.workspace.revision++
+		wm.revision++
 	}
 
 	return nil

@@ -57,7 +57,7 @@ func TestAdd(t *testing.T) {
 
 		want := workspace(column("Column", A))
 
-		if diff := cmp.Diff(want, ws, cmp.AllowUnexported(Workspace{})); diff != "" {
+		if diff := cmp.Diff(want, ws); diff != "" {
 			t.Errorf("workspace mismatch (-want +got):\n%s", diff)
 		}
 	})
@@ -143,7 +143,7 @@ func TestDelete(t *testing.T) {
 					t.Fatalf("expected workspace to be updated")
 				}
 
-				if diff := cmp.Diff(tt.want, tt.ws, cmp.AllowUnexported(Workspace{})); diff != "" {
+				if diff := cmp.Diff(tt.want, tt.ws); diff != "" {
 					t.Errorf("workspace mismatch (-want +got):\n%s", diff)
 				}
 			})
@@ -178,7 +178,7 @@ func TestDelete(t *testing.T) {
 
 				want := workspace(column("Column", A))
 
-				if diff := cmp.Diff(want, ws, cmp.AllowUnexported(Workspace{})); diff != "" {
+				if diff := cmp.Diff(want, ws); diff != "" {
 					t.Errorf("workspace mismatch (-want +got):\n%s", diff)
 				}
 			})
@@ -203,7 +203,7 @@ func TestMoveInDirection(t *testing.T) {
 
 				want := workspace(column("Column", A))
 
-				if diff := cmp.Diff(want, ws, cmp.AllowUnexported(Workspace{})); diff != "" {
+				if diff := cmp.Diff(want, ws); diff != "" {
 					t.Errorf("workspace mismatch (-want +got):\n%s", diff)
 				}
 			})
@@ -279,7 +279,7 @@ func TestMoveInDirection(t *testing.T) {
 					t.Fatalf("expected workspace to be updated")
 				}
 
-				if diff := cmp.Diff(tt.want, tt.ws, cmp.AllowUnexported(Workspace{})); diff != "" {
+				if diff := cmp.Diff(tt.want, tt.ws); diff != "" {
 					t.Errorf("workspace mismatch (-want +got):\n%s", diff)
 				}
 			})
@@ -430,7 +430,7 @@ func TestMoveToPosition(t *testing.T) {
 					t.Fatalf("expected updated to be %v, got %v", tt.wantUpdated, updated)
 				}
 
-				if diff := cmp.Diff(tt.want, tt.ws, cmp.AllowUnexported(Workspace{})); diff != "" {
+				if diff := cmp.Diff(tt.want, tt.ws); diff != "" {
 					t.Errorf("workspace mismatch (-want +got):\n%s", diff)
 				}
 			})
@@ -550,16 +550,5 @@ func TestFindWorkItemPosition(t *testing.T) {
 				t.Errorf("expected position %v, got %v", tt.want, pos)
 			}
 		})
-	}
-}
-
-func TestView(t *testing.T) {
-	ws := workspace(column("Column", A))
-	ws.revision = 42
-
-	got := ws.view()
-
-	if got.Revision != 42 {
-		t.Fatalf("expected revision 42, got %d", got.Revision)
 	}
 }
