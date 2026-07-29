@@ -19,7 +19,7 @@ func column(name string, items ...model.WorkItem) model.Column {
 	}
 }
 
-func item(id, name string) model.WorkItem {
+func item(id model.WorkItemID, name string) model.WorkItem {
 	return model.WorkItem{
 		ID:   id,
 		Name: name,

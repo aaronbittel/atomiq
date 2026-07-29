@@ -17,7 +17,7 @@ func column(name string, items ...WorkItem) Column {
 	}
 }
 
-func item(id, name string) WorkItem {
+func item(id WorkItemID, name string) WorkItem {
 	return WorkItem{
 		ID:   id,
 		Name: name,

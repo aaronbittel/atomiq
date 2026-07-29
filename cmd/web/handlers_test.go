@@ -160,7 +160,7 @@ func TestWorkItemDelete(t *testing.T) {
 		form.Set("_method", "DELETE")
 		form.Set("revision", "0")
 
-		resp := ts.postForm(t, "/work-item/"+workItem1.ID, form)
+		resp := ts.postForm(t, "/work-item/"+workItem1.ID.String(), form)
 		assertRedirect(t, resp, http.StatusSeeOther, "/")
 
 		resp = ts.get(t, "/")
@@ -186,6 +186,7 @@ func TestWorkItemDelete(t *testing.T) {
 
 		t.Run("item not found", func(t *testing.T) {
 			item := model.NewWorkItem("Item")
+			unknownID := newUnknownWorkItemID(t, item.ID)
 
 			ws := model.Workspace{
 				Columns: []model.Column{
@@ -204,7 +205,7 @@ func TestWorkItemDelete(t *testing.T) {
 			form.Set("_method", "DELETE")
 			form.Set("revision", "0")
 
-			resp := ts.postForm(t, "/work-item/"+makeInvalidID(item.ID), form)
+			resp := ts.postForm(t, "/work-item/"+unknownID.String(), form)
 
 			assertStatusCode(t, http.StatusNotFound, resp.StatusCode)
 		})
@@ -233,6 +234,7 @@ func TestWorkItemDelete(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				item := model.NewWorkItem("item")
+
 				ws := model.Workspace{
 					Columns: []model.Column{
 						{
@@ -252,7 +254,7 @@ func TestWorkItemDelete(t *testing.T) {
 
 				tt.mutate(form)
 
-				resp := ts.postForm(t, "/work-item/"+item.ID, form)
+				resp := ts.postForm(t, "/work-item/"+item.ID.String(), form)
 				assertStatusCode(t, tt.wantCode, resp.StatusCode)
 			})
 		}
@@ -357,7 +359,7 @@ func TestWorkItemMove(t *testing.T) {
 			},
 			{
 				name:     "item not found",
-				url:      fmt.Sprintf("/work-item/%s/move", makeInvalidID(item.ID)),
+				url:      fmt.Sprintf("/work-item/%s/move", newUnknownWorkItemID(t, item.ID)),
 				wantCode: http.StatusNotFound,
 			},
 		}
@@ -402,12 +404,13 @@ func TestWorkItemMove(t *testing.T) {
 	})
 }
 
-func makeInvalidID(id string) string {
-	b := []byte(id)
-	if b[0] == 'A' {
-		b[0] = 'B'
-	} else {
-		b[0] = 'A'
+func newUnknownWorkItemID(t *testing.T, existing model.WorkItemID) model.WorkItemID {
+	t.Helper()
+
+	for {
+		id := model.NewWorkItem("Not inserted").ID
+		if id != existing {
+			return id
+		}
 	}
-	return string(b)
 }

@@ -83,7 +83,7 @@ func TestDelete(t *testing.T) {
 		tests := []struct {
 			name string
 			ws   Workspace
-			id   string
+			id   WorkItemID
 			want Workspace
 		}{
 			{
@@ -153,7 +153,7 @@ func TestDelete(t *testing.T) {
 	t.Run("invalid", func(t *testing.T) {
 		tests := []struct {
 			name    string
-			id      string
+			id      WorkItemID
 			wantErr error
 		}{
 			{
@@ -214,7 +214,7 @@ func TestMoveInDirection(t *testing.T) {
 		tests := []struct {
 			name      string
 			ws        Workspace
-			id        string
+			id        WorkItemID
 			direction MoveDirection
 			want      Workspace
 		}{
@@ -290,7 +290,7 @@ func TestMoveInDirection(t *testing.T) {
 		tests := []struct {
 			name      string
 			ws        Workspace
-			id        string
+			id        WorkItemID
 			direction MoveDirection
 			wantErr   error
 		}{
@@ -338,7 +338,7 @@ func TestMoveToPosition(t *testing.T) {
 		tests := []struct {
 			name        string
 			ws          Workspace
-			id          string
+			id          WorkItemID
 			insertPoint WorkItemInsertionPoint
 			want        Workspace
 			wantUpdated bool
@@ -441,7 +441,7 @@ func TestMoveToPosition(t *testing.T) {
 		tests := []struct {
 			name        string
 			ws          Workspace
-			id          string
+			id          WorkItemID
 			insertPoint WorkItemInsertionPoint
 			wantErr     error
 		}{
@@ -504,7 +504,7 @@ func TestFindWorkItemPosition(t *testing.T) {
 	tests := []struct {
 		name    string
 		ws      Workspace
-		id      string
+		id      WorkItemID
 		want    workItemPosition
 		wantErr error
 	}{

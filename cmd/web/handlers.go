@@ -106,8 +106,8 @@ func (app *application) workItemDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	itemID := r.PathValue("id")
-	if len(itemID) != model.WorkItemIDLength {
+	itemID, err := model.ParseWorkItemID(r.PathValue("id"))
+	if err != nil {
 		app.clientError(w, http.StatusUnprocessableEntity)
 		return
 	}
@@ -145,8 +145,8 @@ func (app *application) workItemMove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	workItemID := r.PathValue("id")
-	if len(workItemID) != model.WorkItemIDLength {
+	itemID, err := model.ParseWorkItemID(r.PathValue("id"))
+	if err != nil {
 		app.clientError(w, http.StatusUnprocessableEntity)
 		return
 	}
@@ -157,7 +157,7 @@ func (app *application) workItemMove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := app.workspaceModel.WorkItemMoveDirection(revision, workItemID, direction); err != nil {
+	if err := app.workspaceModel.WorkItemMoveDirection(revision, itemID, direction); err != nil {
 		switch {
 		case errors.Is(err, model.ErrWorkItemNotFound):
 			app.clientError(w, http.StatusNotFound)

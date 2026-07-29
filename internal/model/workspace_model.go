@@ -1,7 +1,6 @@
 package model
 
 import (
-	"crypto/rand"
 	"fmt"
 	"sync"
 )
@@ -69,7 +68,7 @@ func (wm *WorkspaceModel) WorkItemAdd(expectedRevision uint64, columnIdx int, na
 //
 // It returns ErrRevisionConflict when expectedRevision does not match the current
 // revision. A successful deletion increments the revision.
-func (wm *WorkspaceModel) WorkItemDelete(expectedRevision uint64, itemID string) error {
+func (wm *WorkspaceModel) WorkItemDelete(expectedRevision uint64, itemID WorkItemID) error {
 	return wm.mutate(expectedRevision, func(w *Workspace) (bool, error) {
 		return w.delete(itemID)
 	})
@@ -79,7 +78,7 @@ func (wm *WorkspaceModel) WorkItemDelete(expectedRevision uint64, itemID string)
 //
 // Moves that are blocked by a workspace boundary are successful no-ops and leave the
 // revision unchanged.
-func (wm *WorkspaceModel) WorkItemMoveDirection(expectedRevision uint64, itemID string, direction MoveDirection) error {
+func (wm *WorkspaceModel) WorkItemMoveDirection(expectedRevision uint64, itemID WorkItemID, direction MoveDirection) error {
 	return wm.mutate(expectedRevision, func(w *Workspace) (bool, error) {
 		return w.moveInDirection(itemID, direction)
 	})
@@ -90,7 +89,7 @@ func (wm *WorkspaceModel) WorkItemMoveDirection(expectedRevision uint64, itemID 
 // Within the same column, moving an item to its current insertion position or the
 // following insertion position is a no-op. For [A, B, C], moving B to index 1 or 2
 // leaves the column and revision unchanged.
-func (wm *WorkspaceModel) WorkItemMovePosition(expectedRevision uint64, itemID string, insertPoint WorkItemInsertionPoint) error {
+func (wm *WorkspaceModel) WorkItemMovePosition(expectedRevision uint64, itemID WorkItemID, insertPoint WorkItemInsertionPoint) error {
 	return wm.mutate(expectedRevision, func(w *Workspace) (bool, error) {
 		return w.moveToPosition(itemID, insertPoint)
 	})
@@ -118,7 +117,7 @@ func (wm *WorkspaceModel) mutate(expectedRevision uint64, mutation func(*Workspa
 // NewWorkItem creates a work item with a generated short ID.
 func NewWorkItem(name string) WorkItem {
 	return WorkItem{
-		ID:   rand.Text()[:WorkItemIDLength],
+		ID:   newWorkItemID(),
 		Name: name,
 	}
 }

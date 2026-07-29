@@ -14,6 +14,6 @@ type ColumnView struct {
 
 // WorkItemView is the rendered representation of a work item.
 type WorkItemView struct {
-	ID   string
+	ID   WorkItemID
 	Name string
 }

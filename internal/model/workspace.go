@@ -1,10 +1,13 @@
 package model
 
 import (
+	"crypto/rand"
 	"fmt"
 	"slices"
 	"strings"
 )
+
+type WorkItemID string
 
 // Workspace contains the columns and work items in one work context.
 // Its revision is managed exclusively by WorkspaceModel.
@@ -20,7 +23,7 @@ type Column struct {
 
 // WorkItem is one unit of work in a column.
 type WorkItem struct {
-	ID   string
+	ID   WorkItemID
 	Name string
 }
 
@@ -55,7 +58,7 @@ func (ws *Workspace) add(columnIdx int, name string) (updated bool, err error) {
 	return true, nil
 }
 
-func (ws *Workspace) delete(id string) (updated bool, err error) {
+func (ws *Workspace) delete(id WorkItemID) (updated bool, err error) {
 	pos, err := ws.findWorkItemPosition(id)
 	if err != nil {
 		return false, err
@@ -68,7 +71,7 @@ func (ws *Workspace) delete(id string) (updated bool, err error) {
 	return true, nil
 }
 
-func (ws *Workspace) moveInDirection(id string, direction MoveDirection) (updated bool, err error) {
+func (ws *Workspace) moveInDirection(id WorkItemID, direction MoveDirection) (updated bool, err error) {
 	pos, err := ws.findWorkItemPosition(id)
 	if err != nil {
 		return false, err
@@ -87,7 +90,7 @@ func (ws *Workspace) moveInDirection(id string, direction MoveDirection) (update
 	return true, nil
 }
 
-func (ws *Workspace) moveToPosition(id string, insertPoint WorkItemInsertionPoint) (updated bool, err error) {
+func (ws *Workspace) moveToPosition(id WorkItemID, insertPoint WorkItemInsertionPoint) (updated bool, err error) {
 	from, err := ws.findWorkItemPosition(id)
 	if err != nil {
 		return false, err
@@ -115,7 +118,7 @@ func sameEffectivePosition(from, to workItemPosition) bool {
 	return to.ItemIdx == from.ItemIdx || to.ItemIdx == from.ItemIdx+1
 }
 
-func (ws *Workspace) findWorkItemPosition(id string) (workItemPosition, error) {
+func (ws *Workspace) findWorkItemPosition(id WorkItemID) (workItemPosition, error) {
 	for colIdx, col := range ws.Columns {
 		for itemIdx, item := range col.WorkItems {
 			if item.ID == id {
@@ -252,6 +255,21 @@ func (ws *Workspace) isValidToPosition(pos WorkItemInsertionPoint) error {
 	}
 
 	return nil
+}
+
+func newWorkItemID() WorkItemID {
+	return WorkItemID(rand.Text()[:WorkItemIDLength])
+}
+
+func ParseWorkItemID(s string) (WorkItemID, error) {
+	if len(s) != WorkItemIDLength {
+		return "", ErrInvalidWorkItemIDFormat
+	}
+	return WorkItemID(s), nil
+}
+
+func (wid WorkItemID) String() string {
+	return string(wid)
 }
 
 func validSliceAccess(idx, length int) bool {
