@@ -185,7 +185,7 @@ func TestWorkItemMovePosition(t *testing.T) {
 		}
 	})
 
-	t.Run("no-op move does not update revision 2", func(t *testing.T) {
+	t.Run("move to following insertion index does not update revision", func(t *testing.T) {
 		wm := model.NewWorkspaceModel(model.NewWorkspace(model.NewColumn("Column", itemA, itemB)))
 
 		err := wm.WorkItemMovePosition(0, itemB.ID(), model.WorkItemInsertionPoint{

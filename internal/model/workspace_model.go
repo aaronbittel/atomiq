@@ -25,7 +25,7 @@ type MoveDirection string
 const (
 	// WorkItemIDLength is the number of characters generated for work item IDs.
 	WorkItemIDLength = 8
-	// WorkspaceIDLength is the number of characters generated for work item IDs.
+	// WorkspaceIDLength is the number of characters generated for workspace IDs.
 	WorkspaceIDLength = 8
 
 	DirectionUp    MoveDirection = "up"
