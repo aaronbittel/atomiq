@@ -25,6 +25,8 @@ type MoveDirection string
 const (
 	// WorkItemIDLength is the number of characters generated for work item IDs.
 	WorkItemIDLength = 8
+	// WorkspaceIDLength is the number of characters generated for work item IDs.
+	WorkspaceIDLength = 8
 
 	DirectionUp    MoveDirection = "up"
 	DirectionDown  MoveDirection = "down"
@@ -112,14 +114,6 @@ func (wm *WorkspaceModel) mutate(expectedRevision uint64, mutation func(*Workspa
 	}
 
 	return nil
-}
-
-// NewWorkItem creates a work item with a generated short ID.
-func NewWorkItem(name string) WorkItem {
-	return WorkItem{
-		ID:   newWorkItemID(),
-		Name: name,
-	}
 }
 
 // ParseMoveDirection converts form input into a MoveDirection.

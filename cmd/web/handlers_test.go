@@ -16,11 +16,9 @@ func TestWorkItemPost(t *testing.T) {
 		t.Chdir("../..")
 
 		workspaceModel := model.NewWorkspaceModel(
-			model.Workspace{
-				Columns: []model.Column{
-					{Name: "Backlog"},
-				},
-			},
+			model.NewWorkspace(
+				model.NewColumn("Backlog"),
+			),
 		)
 
 		app := newTestApplication(t, workspaceModel)
@@ -47,11 +45,9 @@ func TestWorkItemPost(t *testing.T) {
 			t.Chdir("../..")
 
 			workspaceModel := model.NewWorkspaceModel(
-				model.Workspace{
-					Columns: []model.Column{
-						{Name: "Backlog"},
-					},
-				},
+				model.NewWorkspace(
+					model.NewColumn("Backlog"),
+				),
 			)
 
 			app := newTestApplication(t, workspaceModel)
@@ -137,19 +133,12 @@ func TestWorkItemDelete(t *testing.T) {
 		t.Chdir("../..")
 
 		workItem1 := model.NewWorkItem("Todo 1")
+		workItem2 := model.NewWorkItem("Todo 2")
 
 		workspaceModel := model.NewWorkspaceModel(
-			model.Workspace{
-				Columns: []model.Column{
-					{
-						Name: "Backlog",
-						WorkItems: []model.WorkItem{
-							workItem1,
-							model.NewWorkItem("Todo 2"),
-						},
-					},
-				},
-			},
+			model.NewWorkspace(
+				model.NewColumn("Backlog", workItem1, workItem2),
+			),
 		)
 
 		app := newTestApplication(t, workspaceModel)
@@ -166,8 +155,8 @@ func TestWorkItemDelete(t *testing.T) {
 		resp = ts.get(t, "/")
 		assertStatusCode(t, http.StatusOK, resp.StatusCode)
 
-		assertNotContains(t, resp.Body, "Todo 1")
-		assertContains(t, resp.Body, "Todo 2")
+		assertNotContains(t, resp.Body, workItem1.Name)
+		assertContains(t, resp.Body, workItem2.Name)
 	})
 
 	t.Run("client error", func(t *testing.T) {
@@ -188,14 +177,7 @@ func TestWorkItemDelete(t *testing.T) {
 			item := model.NewWorkItem("Item")
 			unknownID := newUnknownWorkItemID(t, item.ID)
 
-			ws := model.Workspace{
-				Columns: []model.Column{
-					{
-						Name:      "Backlog",
-						WorkItems: []model.WorkItem{item},
-					},
-				},
-			}
+			ws := model.NewWorkspace(model.NewColumn("Backlog", item))
 
 			app := newTestApplication(t, model.NewWorkspaceModel(ws))
 			ts := newTestServer(t, app.routes())
@@ -235,14 +217,9 @@ func TestWorkItemDelete(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				item := model.NewWorkItem("item")
 
-				ws := model.Workspace{
-					Columns: []model.Column{
-						{
-							Name:      "Backlog",
-							WorkItems: []model.WorkItem{item},
-						},
-					},
-				}
+				ws := model.NewWorkspace(
+					model.NewColumn("Backlog", item),
+				)
 
 				app := newTestApplication(t, model.NewWorkspaceModel(ws))
 				ts := newTestServer(t, app.routes())
@@ -268,14 +245,9 @@ func TestWorkItemMove(t *testing.T) {
 		A := model.NewWorkItem("A")
 		B := model.NewWorkItem("B")
 
-		ws := model.Workspace{
-			Columns: []model.Column{
-				{
-					Name:      "Backlog",
-					WorkItems: []model.WorkItem{A, B},
-				},
-			},
-		}
+		ws := model.NewWorkspace(
+			model.NewColumn("Backlog", A, B),
+		)
 		wm := model.NewWorkspaceModel(ws)
 
 		app := newTestApplication(t, wm)
@@ -366,14 +338,9 @@ func TestWorkItemMove(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				ws := model.Workspace{
-					Columns: []model.Column{
-						{
-							Name:      "Backlog",
-							WorkItems: []model.WorkItem{item},
-						},
-					},
-				}
+				ws := model.NewWorkspace(
+					model.NewColumn("Backlog", item),
+				)
 
 				app := newTestApplication(t, model.NewWorkspaceModel(ws))
 				ts := newTestServer(t, app.routes())

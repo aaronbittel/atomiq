@@ -8,11 +8,34 @@ import (
 )
 
 type WorkItemID string
+type WorkspaceID string
 
 // Workspace contains the columns and work items in one work context.
-// Its revision is managed exclusively by WorkspaceModel.
 type Workspace struct {
-	Columns []Column
+	id      WorkspaceID
+	columns []Column
+}
+
+func NewWorkspace(columns ...Column) Workspace {
+	clonedColumns := make([]Column, len(columns))
+	for i, col := range columns {
+		clonedColumns[i] = col.clone()
+	}
+	return Workspace{
+		id:      newWorkspaceID(),
+		columns: clonedColumns,
+	}
+}
+
+func (ws *Workspace) clone() Workspace {
+	columns := make([]Column, len(ws.columns))
+	for i, col := range ws.columns {
+		columns[i] = col.clone()
+	}
+	return Workspace{
+		id:      ws.id,
+		columns: columns,
+	}
 }
 
 // Column groups work items under one name.
@@ -21,10 +44,46 @@ type Column struct {
 	WorkItems []WorkItem
 }
 
+func NewColumn(name string, items ...WorkItem) Column {
+	clonedItems := make([]WorkItem, len(items))
+	for i, item := range items {
+		clonedItems[i] = item.clone()
+	}
+	return Column{
+		Name:      name,
+		WorkItems: clonedItems,
+	}
+}
+
+func (c Column) clone() Column {
+	items := make([]WorkItem, len(c.WorkItems))
+	for i, item := range c.WorkItems {
+		items[i] = item.clone()
+	}
+	return Column{
+		Name:      c.Name,
+		WorkItems: items,
+	}
+}
+
 // WorkItem is one unit of work in a column.
 type WorkItem struct {
 	ID   WorkItemID
 	Name string
+}
+
+func NewWorkItem(name string) WorkItem {
+	return WorkItem{
+		ID:   newWorkItemID(),
+		Name: name,
+	}
+}
+
+func (wi WorkItem) clone() WorkItem {
+	return WorkItem{
+		ID:   wi.ID,
+		Name: wi.Name,
+	}
 }
 
 // workItemPosition identifies the current location of an existing work item.
@@ -44,8 +103,8 @@ type WorkItemInsertionPoint struct {
 }
 
 func (ws *Workspace) add(columnIdx int, name string) (updated bool, err error) {
-	if !validSliceAccess(columnIdx, len(ws.Columns)) {
-		return false, columnIdxErr(columnIdx, len(ws.Columns))
+	if !validSliceAccess(columnIdx, len(ws.columns)) {
+		return false, columnIdxErr(columnIdx, len(ws.columns))
 	}
 
 	name = strings.TrimSpace(name)
@@ -53,7 +112,7 @@ func (ws *Workspace) add(columnIdx int, name string) (updated bool, err error) {
 		return false, ErrInvalidWorkItemName
 	}
 
-	ws.Columns[columnIdx].WorkItems = append(ws.Columns[columnIdx].WorkItems, NewWorkItem(name))
+	ws.columns[columnIdx].WorkItems = append(ws.columns[columnIdx].WorkItems, NewWorkItem(name))
 
 	return true, nil
 }
@@ -64,9 +123,9 @@ func (ws *Workspace) delete(id WorkItemID) (updated bool, err error) {
 		return false, err
 	}
 
-	items := ws.Columns[pos.ColumnIdx].WorkItems
+	items := ws.columns[pos.ColumnIdx].WorkItems
 	items = slices.Delete(items, pos.ItemIdx, pos.ItemIdx+1)
-	ws.Columns[pos.ColumnIdx].WorkItems = items
+	ws.columns[pos.ColumnIdx].WorkItems = items
 
 	return true, nil
 }
@@ -119,7 +178,7 @@ func sameEffectivePosition(from, to workItemPosition) bool {
 }
 
 func (ws *Workspace) findWorkItemPosition(id WorkItemID) (workItemPosition, error) {
-	for colIdx, col := range ws.Columns {
+	for colIdx, col := range ws.columns {
 		for itemIdx, item := range col.WorkItems {
 			if item.ID == id {
 				return workItemPosition{
@@ -133,23 +192,9 @@ func (ws *Workspace) findWorkItemPosition(id WorkItemID) (workItemPosition, erro
 	return workItemPosition{}, fmt.Errorf("%w: %q", ErrWorkItemNotFound, id)
 }
 
-func (ws *Workspace) clone() Workspace {
-	columns := make([]Column, len(ws.Columns))
-	for i, col := range ws.Columns {
-		columns[i].Name = col.Name
-		for _, item := range col.WorkItems {
-			columns[i].WorkItems = append(columns[i].WorkItems, WorkItem{
-				ID:   item.ID,
-				Name: item.Name,
-			})
-		}
-	}
-	return Workspace{Columns: columns}
-}
-
 func (ws *Workspace) view() []ColumnView {
-	columns := make([]ColumnView, len(ws.Columns))
-	for i, col := range ws.Columns {
+	columns := make([]ColumnView, len(ws.columns))
+	for i, col := range ws.columns {
 		columns[i].Name = col.Name
 		for _, wi := range col.WorkItems {
 			columns[i].WorkItems = append(columns[i].WorkItems, WorkItemView(wi))
@@ -168,7 +213,7 @@ func (ws *Workspace) moveWorkItemToPosition(from, to workItemPosition) {
 }
 
 func (ws *Workspace) moveWorkItemWithinColumn(columnIdx, fromIdx, toIdx int) {
-	items := ws.Columns[columnIdx].WorkItems
+	items := ws.columns[columnIdx].WorkItems
 	item := items[fromIdx]
 
 	items = slices.Delete(items, fromIdx, fromIdx+1)
@@ -179,19 +224,19 @@ func (ws *Workspace) moveWorkItemWithinColumn(columnIdx, fromIdx, toIdx int) {
 	}
 	items = slices.Insert(items, toIdx, item)
 
-	ws.Columns[columnIdx].WorkItems = items
+	ws.columns[columnIdx].WorkItems = items
 }
 
 func (ws *Workspace) moveWorkItemBetweenColumns(from, to workItemPosition) {
-	fromItems := ws.Columns[from.ColumnIdx].WorkItems
-	toItems := ws.Columns[to.ColumnIdx].WorkItems
+	fromItems := ws.columns[from.ColumnIdx].WorkItems
+	toItems := ws.columns[to.ColumnIdx].WorkItems
 
 	item := fromItems[from.ItemIdx]
 	fromItems = slices.Delete(fromItems, from.ItemIdx, from.ItemIdx+1)
 	toItems = slices.Insert(toItems, to.ItemIdx, item)
 
-	ws.Columns[from.ColumnIdx].WorkItems = fromItems
-	ws.Columns[to.ColumnIdx].WorkItems = toItems
+	ws.columns[from.ColumnIdx].WorkItems = fromItems
+	ws.columns[to.ColumnIdx].WorkItems = toItems
 }
 
 func (ws *Workspace) getToWorkItemPosition(from workItemPosition, direction MoveDirection) (workItemPosition, error) {
@@ -206,7 +251,7 @@ func (ws *Workspace) getToWorkItemPosition(from workItemPosition, direction Move
 			ItemIdx:   from.ItemIdx - 1,
 		}
 	case DirectionDown:
-		items := ws.Columns[from.ColumnIdx].WorkItems
+		items := ws.columns[from.ColumnIdx].WorkItems
 		if from.ItemIdx == len(items)-1 {
 			return from, nil
 		}
@@ -215,7 +260,7 @@ func (ws *Workspace) getToWorkItemPosition(from workItemPosition, direction Move
 			ItemIdx:   from.ItemIdx + 2,
 		}
 	case DirectionRight:
-		columns := ws.Columns
+		columns := ws.columns
 		if from.ColumnIdx == len(columns)-1 {
 			return from, nil
 		}
@@ -231,7 +276,7 @@ func (ws *Workspace) getToWorkItemPosition(from workItemPosition, direction Move
 			return from, nil
 		}
 
-		columns := ws.Columns
+		columns := ws.columns
 		toColumnIdx := from.ColumnIdx - 1
 
 		to = workItemPosition{
@@ -246,12 +291,12 @@ func (ws *Workspace) getToWorkItemPosition(from workItemPosition, direction Move
 }
 
 func (ws *Workspace) isValidToPosition(pos WorkItemInsertionPoint) error {
-	if !validSliceAccess(pos.ColumnIdx, len(ws.Columns)) {
-		return columnIdxErr(pos.ColumnIdx, len(ws.Columns))
+	if !validSliceAccess(pos.ColumnIdx, len(ws.columns)) {
+		return columnIdxErr(pos.ColumnIdx, len(ws.columns))
 	}
 
-	if !validInsertionIndex(pos.ItemIdx, len(ws.Columns[pos.ColumnIdx].WorkItems)) {
-		return itemInsertionIdxErr(pos.ColumnIdx, pos.ItemIdx, len(ws.Columns[pos.ColumnIdx].WorkItems))
+	if !validInsertionIndex(pos.ItemIdx, len(ws.columns[pos.ColumnIdx].WorkItems)) {
+		return itemInsertionIdxErr(pos.ColumnIdx, pos.ItemIdx, len(ws.columns[pos.ColumnIdx].WorkItems))
 	}
 
 	return nil
@@ -269,6 +314,21 @@ func ParseWorkItemID(s string) (WorkItemID, error) {
 }
 
 func (wid WorkItemID) String() string {
+	return string(wid)
+}
+
+func newWorkspaceID() WorkspaceID {
+	return WorkspaceID(rand.Text()[:WorkspaceIDLength])
+}
+
+func ParseWorkspaceID(s string) (WorkspaceID, error) {
+	if len(s) != WorkspaceIDLength {
+		return "", ErrInvalidWorkspaceIDFormat
+	}
+	return WorkspaceID(s), nil
+}
+
+func (wid WorkspaceID) String() string {
 	return string(wid)
 }
 

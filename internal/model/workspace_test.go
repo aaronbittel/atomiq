@@ -7,6 +7,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
+const testWorkspaceID WorkspaceID = "ws000001"
+
 var (
 	A = item("1", "A")
 	B = item("2", "B")
@@ -15,7 +17,7 @@ var (
 
 func TestAdd(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
-		ws := workspace(column("Column", A))
+		ws := NewWorkspace(column("Column", A))
 
 		updated, err := ws.add(0, "  New item  ")
 		if err != nil {
@@ -26,7 +28,7 @@ func TestAdd(t *testing.T) {
 			t.Fatal("ws should have been updated")
 		}
 
-		items := ws.Columns[0].WorkItems
+		items := ws.columns[0].WorkItems
 
 		if len(items) != 2 {
 			t.Fatalf("expected 2 work items, got %d", len(items))
@@ -36,13 +38,14 @@ func TestAdd(t *testing.T) {
 			t.Fatalf("expected trimmed name %q, got %q", "New item", items[1].Name)
 		}
 
-		if len(items[1].ID) != WorkItemIDLength {
-			t.Fatal("invalid work item ID")
+		if _, err := ParseWorkItemID(items[1].ID.String()); err != nil {
+			t.Fatalf("invalid work item ID %q: %v", items[1].ID, err)
 		}
 	})
 
 	t.Run("blank name", func(t *testing.T) {
-		ws := workspace(column("Column", A))
+		ws := workspaceWithID(testWorkspaceID, column("Column", A))
+		want := workspaceWithID(testWorkspaceID, column("Column", A))
 
 		wantErr := ErrInvalidWorkItemName
 
@@ -55,15 +58,13 @@ func TestAdd(t *testing.T) {
 			t.Fatal("expected workspace not to be updated")
 		}
 
-		want := workspace(column("Column", A))
-
-		if diff := cmp.Diff(want, ws); diff != "" {
+		if diff := cmp.Diff(want, ws, cmp.AllowUnexported(Workspace{})); diff != "" {
 			t.Errorf("workspace mismatch (-want +got):\n%s", diff)
 		}
 	})
 
 	t.Run("invalid column", func(t *testing.T) {
-		ws := workspace(column("Column", A))
+		ws := workspaceWithID(testWorkspaceID, column("Column", A))
 
 		wantErr := ErrInvalidPosition
 
@@ -88,44 +89,36 @@ func TestDelete(t *testing.T) {
 		}{
 			{
 				name: "only item",
-				ws: workspace(
-					column("Column", A),
-				),
+				ws:   workspaceWithID(testWorkspaceID, column("Column", A)),
 				id:   A.ID,
-				want: workspace(column("Column")),
+				want: workspaceWithID(testWorkspaceID, column("Column")),
 			},
 			{
 				name: "first item",
-				ws: workspace(
-					column("Column", A, B),
-				),
+				ws:   workspaceWithID(testWorkspaceID, column("Column", A, B)),
 				id:   A.ID,
-				want: workspace(column("Column", B)),
+				want: workspaceWithID(testWorkspaceID, column("Column", B)),
 			},
 			{
 				name: "middle item",
-				ws: workspace(
-					column("Column", A, B, C),
-				),
+				ws:   workspaceWithID(testWorkspaceID, column("Column", A, B, C)),
 				id:   B.ID,
-				want: workspace(column("Column", A, C)),
+				want: workspaceWithID(testWorkspaceID, column("Column", A, C)),
 			},
 			{
 				name: "last item",
-				ws: workspace(
-					column("Column", A, B, C),
-				),
+				ws:   workspaceWithID(testWorkspaceID, column("Column", A, B, C)),
 				id:   C.ID,
-				want: workspace(column("Column", A, B)),
+				want: workspaceWithID(testWorkspaceID, column("Column", A, B)),
 			},
 			{
 				name: "multiple columns",
-				ws: workspace(
+				ws: workspaceWithID(testWorkspaceID,
 					column("Column 1", A, B),
 					column("Column 2", C),
 				),
 				id: C.ID,
-				want: workspace(
+				want: workspaceWithID(testWorkspaceID,
 					column("Column 1", A, B),
 					column("Column 2"),
 				),
@@ -143,7 +136,7 @@ func TestDelete(t *testing.T) {
 					t.Fatalf("expected workspace to be updated")
 				}
 
-				if diff := cmp.Diff(tt.want, tt.ws); diff != "" {
+				if diff := cmp.Diff(tt.want, tt.ws, cmp.AllowUnexported(Workspace{})); diff != "" {
 					t.Errorf("workspace mismatch (-want +got):\n%s", diff)
 				}
 			})
@@ -165,7 +158,7 @@ func TestDelete(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				ws := workspace(column("Column", A))
+				ws := workspaceWithID(testWorkspaceID, column("Column", A))
 
 				updated, err := ws.delete(tt.id)
 				if !errors.Is(err, tt.wantErr) {
@@ -176,9 +169,9 @@ func TestDelete(t *testing.T) {
 					t.Fatal("expected workspace not to be updated")
 				}
 
-				want := workspace(column("Column", A))
+				want := workspaceWithID(testWorkspaceID, column("Column", A))
 
-				if diff := cmp.Diff(want, ws); diff != "" {
+				if diff := cmp.Diff(want, ws, cmp.AllowUnexported(Workspace{})); diff != "" {
 					t.Errorf("workspace mismatch (-want +got):\n%s", diff)
 				}
 			})
@@ -190,7 +183,7 @@ func TestMoveInDirection(t *testing.T) {
 	t.Run("no ops", func(t *testing.T) {
 		for _, dir := range []MoveDirection{DirectionUp, DirectionDown, DirectionRight, DirectionLeft} {
 			t.Run(string(dir), func(t *testing.T) {
-				ws := workspace(column("Column", A))
+				ws := workspaceWithID(testWorkspaceID, column("Column", A))
 
 				updated, err := ws.moveInDirection("1", dir)
 				if err != nil {
@@ -201,9 +194,9 @@ func TestMoveInDirection(t *testing.T) {
 					t.Fatal("expected workspace not to be updated")
 				}
 
-				want := workspace(column("Column", A))
+				want := workspaceWithID(testWorkspaceID, column("Column", A))
 
-				if diff := cmp.Diff(want, ws); diff != "" {
+				if diff := cmp.Diff(want, ws, cmp.AllowUnexported(Workspace{})); diff != "" {
 					t.Errorf("workspace mismatch (-want +got):\n%s", diff)
 				}
 			})
@@ -219,49 +212,41 @@ func TestMoveInDirection(t *testing.T) {
 			want      Workspace
 		}{
 			{
-				name: "up",
-				ws: workspace(
-					column("Column", A, B),
-				),
+				name:      "up",
+				ws:        workspaceWithID(testWorkspaceID, column("Column", A, B)),
 				id:        B.ID,
 				direction: DirectionUp,
-				want: workspace(
-					column("Column", B, A),
-				),
+				want:      workspaceWithID(testWorkspaceID, column("Column", B, A)),
 			},
 			{
-				name: "down",
-				ws: workspace(
-					column("Column", A, B),
-				),
+				name:      "down",
+				ws:        workspaceWithID(testWorkspaceID, column("Column", A, B)),
 				id:        A.ID,
 				direction: DirectionDown,
-				want: workspace(
-					column("Column", B, A),
-				),
+				want:      workspaceWithID(testWorkspaceID, column("Column", B, A)),
 			},
 			{
 				name: "right",
-				ws: workspace(
+				ws: workspaceWithID(testWorkspaceID,
 					column("Column 1", A, B),
 					column("Column 2", C),
 				),
 				id:        A.ID,
 				direction: DirectionRight,
-				want: workspace(
+				want: workspaceWithID(testWorkspaceID,
 					column("Column 1", B),
 					column("Column 2", C, A),
 				),
 			},
 			{
 				name: "left",
-				ws: workspace(
+				ws: workspaceWithID(testWorkspaceID,
 					column("Column 1", C),
 					column("Column 2", A, B),
 				),
 				id:        A.ID,
 				direction: DirectionLeft,
-				want: workspace(
+				want: workspaceWithID(testWorkspaceID,
 					column("Column 1", C, A),
 					column("Column 2", B),
 				),
@@ -279,7 +264,7 @@ func TestMoveInDirection(t *testing.T) {
 					t.Fatalf("expected workspace to be updated")
 				}
 
-				if diff := cmp.Diff(tt.want, tt.ws); diff != "" {
+				if diff := cmp.Diff(tt.want, tt.ws, cmp.AllowUnexported(Workspace{})); diff != "" {
 					t.Errorf("workspace mismatch (-want +got):\n%s", diff)
 				}
 			})
@@ -295,19 +280,15 @@ func TestMoveInDirection(t *testing.T) {
 			wantErr   error
 		}{
 			{
-				name: "item ID",
-				ws: workspace(
-					column("Column", A),
-				),
+				name:      "item ID",
+				ws:        workspaceWithID(testWorkspaceID, column("Column", A)),
 				id:        B.ID,
 				direction: DirectionUp,
 				wantErr:   ErrWorkItemNotFound,
 			},
 			{
-				name: "move direction",
-				ws: workspace(
-					column("Column", A),
-				),
+				name:      "move direction",
+				ws:        workspaceWithID(testWorkspaceID, column("Column", A)),
 				id:        A.ID,
 				direction: MoveDirection("invalid"),
 				wantErr:   ErrInvalidMoveDirection,
@@ -345,76 +326,56 @@ func TestMoveToPosition(t *testing.T) {
 		}{
 			{
 				name: "move between columns",
-				ws: workspace(
+				ws: workspaceWithID(testWorkspaceID,
 					column("Column 1", A, B),
 					column("Column 2", C),
 				),
 				id:          B.ID,
 				insertPoint: insertPoint(1, 1),
-				want: workspace(
+				want: workspaceWithID(testWorkspaceID,
 					column("Column 1", A),
 					column("Column 2", C, B),
 				),
 				wantUpdated: true,
 			},
 			{
-				name: "move earlier in same column",
-				ws: workspace(
-					column("Column", A, B, C),
-				),
+				name:        "move earlier in same column",
+				ws:          workspaceWithID(testWorkspaceID, column("Column", A, B, C)),
 				id:          C.ID,
 				insertPoint: insertPoint(0, 0),
-				want: workspace(
-					column("Column", C, A, B),
-				),
+				want:        workspaceWithID(testWorkspaceID, column("Column", C, A, B)),
 				wantUpdated: true,
 			},
 			{
-				name: "move later in same column",
-				ws: workspace(
-					column("Column", A, B, C),
-				),
+				name:        "move later in same column",
+				ws:          workspaceWithID(testWorkspaceID, column("Column", A, B, C)),
 				id:          A.ID,
 				insertPoint: insertPoint(0, 2),
-				want: workspace(
-					column("Column", B, A, C),
-				),
+				want:        workspaceWithID(testWorkspaceID, column("Column", B, A, C)),
 				wantUpdated: true,
 			},
 			{
-				name: "stay in same position",
-				ws: workspace(
-					column("Column", A, B, C),
-				),
+				name:        "stay in same position",
+				ws:          workspaceWithID(testWorkspaceID, column("Column", A, B, C)),
 				id:          A.ID,
 				insertPoint: insertPoint(0, 0),
-				want: workspace(
-					column("Column", A, B, C),
-				),
+				want:        workspaceWithID(testWorkspaceID, column("Column", A, B, C)),
 				wantUpdated: false,
 			},
 			{
-				name: "same column move to end",
-				ws: workspace(
-					column("Column", A, B, C),
-				),
+				name:        "same column move to end",
+				ws:          workspaceWithID(testWorkspaceID, column("Column", A, B, C)),
 				id:          A.ID,
 				insertPoint: insertPoint(0, 3),
-				want: workspace(
-					column("Column", B, C, A),
-				),
+				want:        workspaceWithID(testWorkspaceID, column("Column", B, C, A)),
 				wantUpdated: true,
 			},
 			{
-				name: "same column move to beginning",
-				ws: workspace(
-					column("Column", A, B, C),
-				),
+				name:        "same column move to beginning",
+				ws:          workspaceWithID(testWorkspaceID, column("Column", A, B, C)),
 				id:          C.ID,
 				insertPoint: insertPoint(0, 0),
-				want: workspace(
-					column("Column", C, A, B),
-				),
+				want:        workspaceWithID(testWorkspaceID, column("Column", C, A, B)),
 				wantUpdated: true,
 			},
 		}
@@ -430,7 +391,7 @@ func TestMoveToPosition(t *testing.T) {
 					t.Fatalf("expected updated to be %v, got %v", tt.wantUpdated, updated)
 				}
 
-				if diff := cmp.Diff(tt.want, tt.ws); diff != "" {
+				if diff := cmp.Diff(tt.want, tt.ws, cmp.AllowUnexported(Workspace{})); diff != "" {
 					t.Errorf("workspace mismatch (-want +got):\n%s", diff)
 				}
 			})
@@ -446,17 +407,15 @@ func TestMoveToPosition(t *testing.T) {
 			wantErr     error
 		}{
 			{
-				name: "to column",
-				ws: workspace(
-					column("Column", A),
-				),
+				name:        "to column",
+				ws:          workspaceWithID(testWorkspaceID, column("Column", A)),
 				id:          A.ID,
 				insertPoint: insertPoint(9, 0),
 				wantErr:     ErrInvalidPosition,
 			},
 			{
 				name: "to index",
-				ws: workspace(
+				ws: workspaceWithID(testWorkspaceID,
 					column("Column 1", A),
 					column("Column 2"),
 				),
@@ -465,19 +424,15 @@ func TestMoveToPosition(t *testing.T) {
 				wantErr:     ErrInvalidPosition,
 			},
 			{
-				name: "equal positions are still validated",
-				ws: workspace(
-					column("Column", A),
-				),
+				name:        "equal positions are still validated",
+				ws:          workspaceWithID(testWorkspaceID, column("Column", A)),
 				id:          A.ID,
 				insertPoint: insertPoint(9, 0),
 				wantErr:     ErrInvalidPosition,
 			},
 			{
-				name: "ID mismatch",
-				ws: workspace(
-					column("Column", A),
-				),
+				name:        "ID mismatch",
+				ws:          workspaceWithID(testWorkspaceID, column("Column", A)),
 				id:          B.ID,
 				insertPoint: insertPoint(0, 0),
 				wantErr:     ErrWorkItemNotFound,
@@ -510,7 +465,7 @@ func TestFindWorkItemPosition(t *testing.T) {
 	}{
 		{
 			name: "first column",
-			ws: workspace(
+			ws: workspaceWithID(testWorkspaceID,
 				column("One", A, B),
 				column("Two", C),
 			),
@@ -519,7 +474,7 @@ func TestFindWorkItemPosition(t *testing.T) {
 		},
 		{
 			name: "second column",
-			ws: workspace(
+			ws: workspaceWithID(testWorkspaceID,
 				column("One", A),
 				column("Two", B, C),
 			),
@@ -528,7 +483,7 @@ func TestFindWorkItemPosition(t *testing.T) {
 		},
 		{
 			name:    "not found",
-			ws:      workspace(column("One", A)),
+			ws:      workspaceWithID(testWorkspaceID, column("One", A)),
 			id:      "missing",
 			wantErr: ErrWorkItemNotFound,
 		},

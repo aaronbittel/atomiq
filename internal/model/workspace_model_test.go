@@ -9,13 +9,13 @@ import (
 )
 
 var (
-	A = item("1", "A")
-	B = item("2", "B")
+	A = model.NewWorkItem("A")
+	B = model.NewWorkItem("B")
 )
 
 func TestWorkspaceView(t *testing.T) {
 	t.Run("view returns snapshot", func(t *testing.T) {
-		wm := model.NewWorkspaceModel(workspace(column("Column", A)))
+		wm := model.NewWorkspaceModel(model.NewWorkspace(model.NewColumn("Column", A)))
 
 		view := wm.WorkspaceView()
 		view.Columns[0].Name = "Mutated"
@@ -32,7 +32,7 @@ func TestWorkspaceView(t *testing.T) {
 
 func TestWorkItemAdd(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
-		wm := model.NewWorkspaceModel(workspace(column("Column")))
+		wm := model.NewWorkspaceModel(model.NewWorkspace(model.NewColumn("Column")))
 
 		if err := wm.WorkItemAdd(0, 0, "New item"); err != nil {
 			t.Fatal(err)
@@ -53,7 +53,7 @@ func TestWorkItemAdd(t *testing.T) {
 	})
 
 	t.Run("invalid column index", func(t *testing.T) {
-		wm := model.NewWorkspaceModel(workspace(column("Column")))
+		wm := model.NewWorkspaceModel(model.NewWorkspace(model.NewColumn("Column")))
 
 		wantErr := model.ErrInvalidPosition
 
@@ -65,7 +65,7 @@ func TestWorkItemAdd(t *testing.T) {
 
 func TestWorkItemDelete(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
-		wm := model.NewWorkspaceModel(workspace(column("Column", A)))
+		wm := model.NewWorkspaceModel(model.NewWorkspace(model.NewColumn("Column", A)))
 
 		if err := wm.WorkItemDelete(0, A.ID); err != nil {
 			t.Fatal(err)
@@ -80,7 +80,7 @@ func TestWorkItemDelete(t *testing.T) {
 	})
 
 	t.Run("invalid item id", func(t *testing.T) {
-		wm := model.NewWorkspaceModel(workspace(column("Column", A)))
+		wm := model.NewWorkspaceModel(model.NewWorkspace(model.NewColumn("Column", A)))
 
 		wantErr := model.ErrWorkItemNotFound
 		err := wm.WorkItemDelete(0, B.ID)
@@ -93,7 +93,7 @@ func TestWorkItemDelete(t *testing.T) {
 
 func TestWorkItemMoveDirection(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
-		wm := model.NewWorkspaceModel(workspace(column("Column", A, B)))
+		wm := model.NewWorkspaceModel(model.NewWorkspace(model.NewColumn("Column", A, B)))
 
 		if err := wm.WorkItemMoveDirection(0, B.ID, model.DirectionUp); err != nil {
 			t.Fatal(err)
@@ -108,7 +108,7 @@ func TestWorkItemMoveDirection(t *testing.T) {
 	})
 
 	t.Run("no-op move does not update revision", func(t *testing.T) {
-		wm := model.NewWorkspaceModel(workspace(column("Column", A)))
+		wm := model.NewWorkspaceModel(model.NewWorkspace(model.NewColumn("Column", A)))
 
 		if err := wm.WorkItemMoveDirection(0, A.ID, model.DirectionUp); err != nil {
 			t.Fatal(err)
@@ -123,7 +123,7 @@ func TestWorkItemMoveDirection(t *testing.T) {
 	})
 
 	t.Run("revision conflict", func(t *testing.T) {
-		wm := model.NewWorkspaceModel(workspace(column("Column", A)))
+		wm := model.NewWorkspaceModel(model.NewWorkspace(model.NewColumn("Column", A)))
 
 		wantErr := model.ErrRevisionConflict
 		if err := wm.WorkItemMoveDirection(1, A.ID, model.DirectionUp); !errors.Is(err, wantErr) {
@@ -141,7 +141,7 @@ func TestWorkItemMoveDirection(t *testing.T) {
 
 func TestWorkItemMovePosition(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
-		wm := model.NewWorkspaceModel(workspace(column("Column", A, B)))
+		wm := model.NewWorkspaceModel(model.NewWorkspace(model.NewColumn("Column", A, B)))
 
 		err := wm.WorkItemMovePosition(0, B.ID, model.WorkItemInsertionPoint{
 			ColumnIdx: 0,
@@ -160,7 +160,7 @@ func TestWorkItemMovePosition(t *testing.T) {
 	})
 
 	t.Run("no-op move does not update revision", func(t *testing.T) {
-		wm := model.NewWorkspaceModel(workspace(column("Column", A, B)))
+		wm := model.NewWorkspaceModel(model.NewWorkspace(model.NewColumn("Column", A, B)))
 
 		err := wm.WorkItemMovePosition(0, B.ID, model.WorkItemInsertionPoint{
 			ColumnIdx: 0,
@@ -179,7 +179,7 @@ func TestWorkItemMovePosition(t *testing.T) {
 	})
 
 	t.Run("no-op move does not update revision 2", func(t *testing.T) {
-		wm := model.NewWorkspaceModel(workspace(column("Column", A, B)))
+		wm := model.NewWorkspaceModel(model.NewWorkspace(model.NewColumn("Column", A, B)))
 
 		err := wm.WorkItemMovePosition(0, B.ID, model.WorkItemInsertionPoint{
 			ColumnIdx: 0,
@@ -198,7 +198,7 @@ func TestWorkItemMovePosition(t *testing.T) {
 	})
 
 	t.Run("revision conflict", func(t *testing.T) {
-		wm := model.NewWorkspaceModel(workspace(column("Column", A, B)))
+		wm := model.NewWorkspaceModel(model.NewWorkspace(model.NewColumn("Column", A, B)))
 
 		wantErr := model.ErrRevisionConflict
 		err := wm.WorkItemMovePosition(1, B.ID, model.WorkItemInsertionPoint{
@@ -219,25 +219,8 @@ func TestWorkItemMovePosition(t *testing.T) {
 	})
 }
 
-func TestNewWorkspaceModel(t *testing.T) {
-	t.Run("workspace model is cloned", func(t *testing.T) {
-		initial := workspace(column("Column", A))
-		wm := model.NewWorkspaceModel(initial)
-
-		initial.Columns[0].Name = "Mutated"
-		initial.Columns[0].WorkItems[0].Name = "Mutated"
-
-		want := workspaceView(0, columnView("Column", itemView(A)))
-		got := wm.WorkspaceView()
-
-		if diff := cmp.Diff(want, got); diff != "" {
-			t.Errorf("workspace view mismatch (-want +got):\n%s", diff)
-		}
-	})
-}
-
 func TestSequentialMutationsUseLatestRevision(t *testing.T) {
-	wm := model.NewWorkspaceModel(workspace(column("Column", A, B)))
+	wm := model.NewWorkspaceModel(model.NewWorkspace(model.NewColumn("Column", A, B)))
 
 	if err := wm.WorkItemMoveDirection(0, A.ID, model.DirectionDown); err != nil {
 		t.Fatal(err)

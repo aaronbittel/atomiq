@@ -1,8 +1,9 @@
 package model
 
-func workspace(columns ...Column) Workspace {
+func workspaceWithID(id WorkspaceID, columns ...Column) Workspace {
 	return Workspace{
-		Columns: columns,
+		id:      id,
+		columns: columns,
 	}
 }
 
