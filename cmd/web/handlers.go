@@ -35,7 +35,18 @@ type ColumnErr struct {
 	Msg string
 }
 
+func (app *application) home(w http.ResponseWriter, r *http.Request) {
+	rootID := app.workspaceModel.WorkspaceRootID().String()
+	http.Redirect(w, r, "/workspaces/"+rootID, http.StatusSeeOther)
+}
+
 func (app *application) workspaceView(w http.ResponseWriter, r *http.Request) {
+	workspaceID, err := model.ParseWorkspaceID(r.PathValue("id"))
+	if err != nil {
+		app.clientError(w, http.StatusUnprocessableEntity)
+		return
+	}
+
 	t, err := template.ParseFiles("./ui/html/workspaceView.tmpl")
 	if err != nil {
 		app.serverError(w, r, err)
@@ -43,8 +54,19 @@ func (app *application) workspaceView(w http.ResponseWriter, r *http.Request) {
 	}
 	t.Option("missingkey=error")
 
+	workspaceView, err := app.workspaceModel.WorkspaceView(workspaceID)
+	if err != nil {
+		switch {
+		case errors.Is(err, model.ErrWorkspaceNotFound):
+			http.NotFound(w, r)
+		default:
+			app.serverError(w, r, err)
+		}
+		return
+	}
+
 	data := workspaceRenderView{
-		Ws:             app.workspaceModel.WorkspaceView(),
+		Ws:             workspaceView,
 		MoveDirections: moveDirectionViews,
 	}
 
@@ -88,7 +110,8 @@ func (app *application) workItemPost(w http.ResponseWriter, r *http.Request) {
 			app.clientError(w, http.StatusUnprocessableEntity)
 		case errors.Is(err, model.ErrInvalidWorkItemName):
 			app.sessionManager.Put(r.Context(), "columnErr", &ColumnErr{Idx: columnIdx, Msg: "work item must not be blank"})
-			http.Redirect(w, r, "/", http.StatusSeeOther)
+			workspaceID := app.workspaceModel.WorkspaceRootID()
+			http.Redirect(w, r, "/workspaces/"+workspaceID.String(), http.StatusSeeOther)
 		case errors.Is(err, model.ErrRevisionConflict):
 			app.clientError(w, http.StatusConflict)
 		default:
@@ -97,7 +120,8 @@ func (app *application) workItemPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	workspaceID := app.workspaceModel.WorkspaceRootID()
+	http.Redirect(w, r, "/workspaces/"+workspaceID.String(), http.StatusSeeOther)
 }
 
 func (app *application) workItemDelete(w http.ResponseWriter, r *http.Request) {
@@ -130,7 +154,8 @@ func (app *application) workItemDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	workspaceID := app.workspaceModel.WorkspaceRootID()
+	http.Redirect(w, r, "/workspaces/"+workspaceID.String(), http.StatusSeeOther)
 }
 
 func (app *application) workItemMove(w http.ResponseWriter, r *http.Request) {
@@ -169,7 +194,8 @@ func (app *application) workItemMove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	workspaceID := app.workspaceModel.WorkspaceRootID()
+	http.Redirect(w, r, "/workspaces/"+workspaceID.String(), http.StatusSeeOther)
 }
 
 func healthz(w http.ResponseWriter, r *http.Request) {

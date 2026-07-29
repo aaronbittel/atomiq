@@ -15,13 +15,13 @@ func TestWorkItemPost(t *testing.T) {
 	t.Run("valid work item", func(t *testing.T) {
 		t.Chdir("../..")
 
-		workspaceModel := model.NewWorkspaceModel(
+		wm := model.NewWorkspaceModel(
 			model.NewWorkspace(
 				model.NewColumn("Backlog"),
 			),
 		)
 
-		app := newTestApplication(t, workspaceModel)
+		app := newTestApplication(t, wm)
 		app.logger = slog.New(slog.NewTextHandler(t.Output(), nil))
 		ts := newTestServer(t, app.routes())
 		defer ts.Close()
@@ -32,9 +32,10 @@ func TestWorkItemPost(t *testing.T) {
 		form.Set("revision", "0")
 
 		resp := ts.postForm(t, "/work-item", form)
-		assertRedirect(t, resp, http.StatusSeeOther, "/")
+		wantLocation := "/workspaces/" + wm.WorkspaceRootID().String()
+		assertRedirect(t, resp, http.StatusSeeOther, wantLocation)
 
-		resp = ts.get(t, "/")
+		resp = ts.get(t, wantLocation)
 		assertStatusCode(t, http.StatusOK, resp.StatusCode)
 
 		assertContains(t, resp.Body, "New Work Item")
@@ -44,13 +45,13 @@ func TestWorkItemPost(t *testing.T) {
 		t.Run("invalid work item name", func(t *testing.T) {
 			t.Chdir("../..")
 
-			workspaceModel := model.NewWorkspaceModel(
+			wm := model.NewWorkspaceModel(
 				model.NewWorkspace(
 					model.NewColumn("Backlog"),
 				),
 			)
 
-			app := newTestApplication(t, workspaceModel)
+			app := newTestApplication(t, wm)
 			ts := newTestServer(t, app.routes())
 			defer ts.Close()
 
@@ -60,9 +61,10 @@ func TestWorkItemPost(t *testing.T) {
 			form.Set("revision", "0")
 
 			resp := ts.postForm(t, "/work-item", form)
-			assertRedirect(t, resp, http.StatusSeeOther, "/")
+			wantLocation := "/workspaces/" + wm.WorkspaceRootID().String()
+			assertRedirect(t, resp, http.StatusSeeOther, wantLocation)
 
-			resp = ts.get(t, "/")
+			resp = ts.get(t, wantLocation)
 			assertStatusCode(t, http.StatusOK, resp.StatusCode)
 
 			assertContains(t, resp.Body, "Backlog")
@@ -142,13 +144,13 @@ func TestWorkItemDelete(t *testing.T) {
 			workItem2 = model.NewWorkItem(workItem2Name)
 		)
 
-		workspaceModel := model.NewWorkspaceModel(
+		wm := model.NewWorkspaceModel(
 			model.NewWorkspace(
 				model.NewColumn("Backlog", workItem1, workItem2),
 			),
 		)
 
-		app := newTestApplication(t, workspaceModel)
+		app := newTestApplication(t, wm)
 		ts := newTestServer(t, app.routes())
 		defer ts.Close()
 
@@ -157,9 +159,10 @@ func TestWorkItemDelete(t *testing.T) {
 		form.Set("revision", "0")
 
 		resp := ts.postForm(t, "/work-item/"+workItem1.ID().String(), form)
-		assertRedirect(t, resp, http.StatusSeeOther, "/")
+		wantLocation := "/workspaces/" + wm.WorkspaceRootID().String()
+		assertRedirect(t, resp, http.StatusSeeOther, wantLocation)
 
-		resp = ts.get(t, "/")
+		resp = ts.get(t, wantLocation)
 		assertStatusCode(t, http.StatusOK, resp.StatusCode)
 
 		assertNotContains(t, resp.Body, workItem1Name)
@@ -276,7 +279,9 @@ func TestWorkItemMove(t *testing.T) {
 		form.Set("direction", "down")
 
 		resp := ts.postForm(t, fmt.Sprintf("/work-item/%s/move", itemA.ID()), form)
-		assertRedirect(t, resp, http.StatusSeeOther, "/")
+		wantLocation := "/workspaces/" + wm.WorkspaceRootID().String()
+
+		assertRedirect(t, resp, http.StatusSeeOther, wantLocation)
 
 		want := model.WorkspaceView{
 			Revision: 1,
@@ -287,13 +292,16 @@ func TestWorkItemMove(t *testing.T) {
 				},
 			},
 		}
-		got := wm.WorkspaceView()
+		got, err := wm.WorkspaceView(wm.WorkspaceRootID())
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		if diff := cmp.Diff(want, got); diff != "" {
 			t.Errorf("workspace view mismatch (-want +got):\n%s", diff)
 		}
 
-		resp = ts.get(t, "/")
+		resp = ts.get(t, wantLocation)
 
 		assertStatusCode(t, http.StatusOK, resp.StatusCode)
 		assertContains(t, resp.Body, `name="revision" value="1"`)
@@ -345,11 +353,13 @@ func TestWorkItemMove(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				ws := model.NewWorkspace(
-					model.NewColumn("Backlog", item),
+				wm := model.NewWorkspaceModel(
+					model.NewWorkspace(
+						model.NewColumn("Backlog", item),
+					),
 				)
 
-				app := newTestApplication(t, model.NewWorkspaceModel(ws))
+				app := newTestApplication(t, wm)
 				ts := newTestServer(t, app.routes())
 				defer ts.Close()
 
@@ -369,13 +379,39 @@ func TestWorkItemMove(t *testing.T) {
 				resp := ts.postForm(t, url, form)
 				assertStatusCode(t, tt.wantCode, resp.StatusCode)
 
-				resp = ts.get(t, "/")
+				resp = ts.get(t, "/workspaces/"+wm.WorkspaceRootID().String())
 
 				assertStatusCode(t, http.StatusOK, resp.StatusCode)
 				assertContains(t, resp.Body, `name="revision" value="0"`)
 			})
 		}
 	})
+}
+
+func TestHome(t *testing.T) {
+	t.Run("redirects to root workspace", func(t *testing.T) {
+		wm := model.NewWorkspaceModel(model.NewWorkspace())
+
+		app := newTestApplication(t, wm)
+		ts := newTestServer(t, app.routes())
+		defer ts.Close()
+
+		resp := ts.get(t, "/")
+		assertRedirect(t, resp, http.StatusSeeOther, "/workspaces/"+wm.WorkspaceRootID().String())
+	})
+}
+
+func TestWorkspaceView(t *testing.T) {
+	t.Chdir("../../")
+
+	wm := model.NewWorkspaceModel(model.NewWorkspace())
+
+	app := newTestApplication(t, wm)
+	ts := newTestServer(t, app.routes())
+	defer ts.Close()
+
+	resp := ts.get(t, "/workspaces/"+wm.WorkspaceRootID().String())
+	assertStatusCode(t, http.StatusOK, resp.StatusCode)
 }
 
 func newUnknownWorkItemID(t *testing.T, existing model.WorkItemID) model.WorkItemID {

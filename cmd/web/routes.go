@@ -12,7 +12,8 @@ func (app *application) routes() http.Handler {
 
 	mux.HandleFunc("GET /healthz", http.HandlerFunc(healthz))
 
-	mux.HandleFunc("GET /{$}", app.workspaceView)
+	mux.HandleFunc("GET /{$}", app.home)
+	mux.HandleFunc("GET /workspaces/{id}", app.workspaceView)
 	mux.HandleFunc("POST /work-item", app.workItemPost)
 	mux.HandleFunc("DELETE /work-item/{id}", app.workItemDelete)
 	mux.HandleFunc("PATCH /work-item/{id}/move", app.workItemMove)

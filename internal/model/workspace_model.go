@@ -12,15 +12,17 @@ import (
 // The revision is incremented only when an operation changes the workspace; successful
 // no-ops leave it unchanged.
 type WorkspaceModel struct {
-	mu        sync.RWMutex
-	workspace Workspace
-	revision  uint64
+	mu              sync.RWMutex
+	workspace       Workspace
+	rootWorkspaceID WorkspaceID
+	revision        uint64
 }
 
 // NewWorkspaceModel creates a WorkspaceModel that owns a deep copy of ws.
 func NewWorkspaceModel(ws Workspace) *WorkspaceModel {
 	return &WorkspaceModel{
-		workspace: ws.clone(),
+		workspace:       ws.clone(),
+		rootWorkspaceID: ws.id,
 	}
 }
 
@@ -29,14 +31,25 @@ func NewWorkspaceModel(ws Workspace) *WorkspaceModel {
 // The snapshot includes the revision required for subsequent mutation requests. Its
 // slices do not share backing arrays with the model, so callers may render or inspect
 // it without holding the model lock.
-func (wm *WorkspaceModel) WorkspaceView() WorkspaceView {
+func (wm *WorkspaceModel) WorkspaceView(workspaceID WorkspaceID) (WorkspaceView, error) {
 	wm.mu.RLock()
 	defer wm.mu.RUnlock()
+
+	if workspaceID != wm.rootWorkspaceID {
+		return WorkspaceView{}, ErrWorkspaceNotFound
+	}
 
 	return WorkspaceView{
 		Columns:  wm.workspace.view(),
 		Revision: wm.revision,
-	}
+	}, nil
+}
+
+func (wm *WorkspaceModel) WorkspaceRootID() WorkspaceID {
+	wm.mu.RLock()
+	defer wm.mu.RUnlock()
+
+	return wm.rootWorkspaceID
 }
 
 // WorkItemAdd trims and appends a new item to the selected column.
