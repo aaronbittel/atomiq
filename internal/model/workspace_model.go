@@ -13,16 +13,26 @@ import (
 // no-ops leave it unchanged.
 type WorkspaceModel struct {
 	mu              sync.RWMutex
-	workspaces      map[WorkspaceID]Workspace
+	workspaces      map[WorkspaceID]revisionedWorkspace
 	rootWorkspaceID WorkspaceID
-	revision        uint64
+}
+
+type revisionedWorkspace struct {
+	workspace Workspace
+	revision  uint64
+}
+
+func newRevisionedWorkspace(ws Workspace) revisionedWorkspace {
+	return revisionedWorkspace{
+		workspace: ws.clone(),
+	}
 }
 
 // NewWorkspaceModel creates a WorkspaceModel that owns a deep copy of ws.
 func NewWorkspaceModel(ws Workspace) *WorkspaceModel {
 	return &WorkspaceModel{
-		workspaces: map[WorkspaceID]Workspace{
-			ws.id: ws.clone(),
+		workspaces: map[WorkspaceID]revisionedWorkspace{
+			ws.id: newRevisionedWorkspace(ws),
 		},
 		rootWorkspaceID: ws.id,
 	}
@@ -37,14 +47,14 @@ func (wm *WorkspaceModel) WorkspaceView(workspaceID WorkspaceID) (WorkspaceView,
 	wm.mu.RLock()
 	defer wm.mu.RUnlock()
 
-	ws, found := wm.workspaces[workspaceID]
+	rws, found := wm.workspaces[workspaceID]
 	if !found {
 		return WorkspaceView{}, ErrWorkspaceNotFound
 	}
 
 	return WorkspaceView{
-		Columns:  ws.view(),
-		Revision: wm.revision,
+		Columns:  rws.workspace.view(),
+		Revision: rws.revision,
 		ID:       workspaceID,
 	}, nil
 }
@@ -72,7 +82,7 @@ func (wm *WorkspaceModel) WorkItemZoom(workspaceID WorkspaceID, itemID WorkItemI
 		}
 
 		ws := defaultWorkspace()
-		wm.workspaces[ws.id] = ws
+		wm.workspaces[ws.id] = newRevisionedWorkspace(ws)
 
 		w.attachChildWorkspaceID(itemID, ws.id)
 
@@ -143,24 +153,24 @@ func (wm *WorkspaceModel) mutate(workspaceID WorkspaceID, expectedRevision uint6
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
 
-	ws, found := wm.workspaces[workspaceID]
+	rws, found := wm.workspaces[workspaceID]
 	if !found {
 		return ErrWorkspaceNotFound
 	}
 
-	if wm.revision != expectedRevision {
-		return fmt.Errorf("%w: expected %d, actual %d", ErrRevisionConflict, expectedRevision, wm.revision)
+	if rws.revision != expectedRevision {
+		return fmt.Errorf("%w: expected %d, actual %d", ErrRevisionConflict, expectedRevision, rws.revision)
 	}
 
-	updated, err := mutation(&ws)
+	updated, err := mutation(&rws.workspace)
 	if err != nil {
 		return err
 	}
 
 	if updated {
-		wm.revision++
+		rws.revision++
 		// update workspaces map, because lookup only returns a copy
-		wm.workspaces[workspaceID] = ws
+		wm.workspaces[workspaceID] = rws
 	}
 
 	return nil

@@ -260,7 +260,7 @@ func TestWorkItemMovePosition(t *testing.T) {
 }
 
 func TestWorkItemZoom(t *testing.T) {
-	t.Run("first zoom creates default workspace", func(t *testing.T) {
+	t.Run("first zoom creates default workspace with revision 0", func(t *testing.T) {
 		wm := model.NewWorkspaceModel(model.NewWorkspace(
 			model.NewColumn("Backlog", itemA),
 		))
@@ -270,7 +270,7 @@ func TestWorkItemZoom(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		want := workspaceView(childID, 1,
+		want := workspaceView(childID, 0,
 			columnView("Backlog"),
 			columnView("In Progress"),
 			columnView("Done"),
@@ -333,6 +333,54 @@ func TestWorkItemZoom(t *testing.T) {
 
 		if _, err := wm.WorkItemZoom(wm.WorkspaceRootID(), itemB.ID(), 0); !errors.Is(err, wantErr) {
 			t.Fatalf("expected error %v, got %v", wantErr, err)
+		}
+	})
+
+	t.Run("updating child workspace does not modify parent revision", func(t *testing.T) {
+		wm := model.NewWorkspaceModel(model.NewWorkspace(
+			model.NewColumn("Backlog", itemA),
+		))
+
+		childID, err := wm.WorkItemZoom(wm.WorkspaceRootID(), itemA.ID(), 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		itemID, err := wm.WorkItemAdd(childID, 0, 0, "New Child Item")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		wantRootView := workspaceView(wm.WorkspaceRootID(), 1, columnView("Backlog", model.WorkItemView{
+			ID:   itemA.ID(),
+			Name: itemAName,
+		}))
+
+		rootView, err := wm.WorkspaceView(wm.WorkspaceRootID())
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if diff := cmp.Diff(wantRootView, rootView); diff != "" {
+			t.Errorf("workspace view mismatch (-want +got):\n%s", diff)
+		}
+
+		wantChildView := workspaceView(childID, 1,
+			columnView("Backlog", model.WorkItemView{
+				ID:   itemID,
+				Name: "New Child Item",
+			}),
+			columnView("In Progress"),
+			columnView("Done"),
+		)
+
+		childView, err := wm.WorkspaceView(childID)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if diff := cmp.Diff(wantChildView, childView); diff != "" {
+			t.Errorf("workspace view mismatch (-want +got):\n%s", diff)
 		}
 	})
 }
