@@ -67,7 +67,8 @@ func (wi WorkItem) ID() WorkItemID {
 // clone returns a copy of wi.
 func (wi WorkItem) clone() WorkItem {
 	return WorkItem{
-		id:   wi.id,
-		name: wi.name,
+		id:      wi.id,
+		name:    wi.name,
+		childID: wi.childID,
 	}
 }
