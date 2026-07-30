@@ -28,8 +28,9 @@ func (wid WorkItemID) String() string {
 
 // WorkItem is one unit of work in a column.
 type WorkItem struct {
-	id   WorkItemID
-	name string
+	id      WorkItemID
+	name    string
+	childID *WorkspaceID
 }
 
 // NewWorkItem creates a work item with a new ID.
@@ -38,6 +39,24 @@ func NewWorkItem(name string) WorkItem {
 		id:   newWorkItemID(),
 		name: name,
 	}
+}
+
+func (wi WorkItem) hasChildWorkspace() bool {
+	return wi.childID != nil
+}
+
+func (wi WorkItem) childWorkspaceID() WorkspaceID {
+	if wi.childID == nil {
+		panic("childWorkspaceID(): no child workspace attached yet")
+	}
+	return *wi.childID
+}
+
+func (wi *WorkItem) attachChildWorkspaceID(id WorkspaceID) {
+	if wi.childID != nil {
+		panic("attachChildWorkspaceID(): child workspace is already attached")
+	}
+	wi.childID = &id
 }
 
 // ID returns the work item ID.

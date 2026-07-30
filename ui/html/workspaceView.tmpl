@@ -13,6 +13,10 @@
                 <h2>{{.Name}}</h2>
                 {{range $itemIdx, $item := .WorkItems}}
                 <div class="work-item-box">
+                    <form action="/workspaces/{{$.Ws.ID}}/work-items/{{$item.ID}}/zoom" method="post">
+                        <input type="hidden" name="revision" value="{{$.Ws.Revision}}">
+                        <button type="submit" class="bordered-box">O</button>
+                    </form>
                     <div class="work-item bordered-box">
                         <p>{{$item.Name}}</p>
                         {{range $.MoveDirections}}

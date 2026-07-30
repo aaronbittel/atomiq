@@ -259,6 +259,84 @@ func TestWorkItemMovePosition(t *testing.T) {
 	})
 }
 
+func TestWorkItemZoom(t *testing.T) {
+	t.Run("first zoom creates default workspace", func(t *testing.T) {
+		wm := model.NewWorkspaceModel(model.NewWorkspace(
+			model.NewColumn("Backlog", itemA),
+		))
+
+		childID, err := wm.WorkItemZoom(wm.WorkspaceRootID(), itemA.ID(), 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		want := workspaceView(childID, 1,
+			columnView("Backlog"),
+			columnView("In Progress"),
+			columnView("Done"),
+		)
+
+		got, err := wm.WorkspaceView(childID)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("workspace view mismatch (-want +got):\n%s", diff)
+		}
+	})
+
+	t.Run("returns the same child workspace id", func(t *testing.T) {
+		wm := model.NewWorkspaceModel(model.NewWorkspace(
+			model.NewColumn("Backlog", itemA),
+		))
+
+		first, err := wm.WorkItemZoom(wm.WorkspaceRootID(), itemA.ID(), 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		second, err := wm.WorkItemZoom(wm.WorkspaceRootID(), itemA.ID(), 1)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if first != second {
+			t.Fatalf("zoom calls returned different child workspace ids: %q and %q", first, second)
+		}
+	})
+
+	t.Run("existing child workspace does not increment revision", func(t *testing.T) {
+		wm := model.NewWorkspaceModel(model.NewWorkspace(
+			model.NewColumn("Backlog", itemA),
+		))
+
+		if _, err := wm.WorkItemZoom(wm.WorkspaceRootID(), itemA.ID(), 0); err != nil {
+			t.Fatal(err)
+		}
+
+		if _, err := wm.WorkItemZoom(wm.WorkspaceRootID(), itemA.ID(), 1); err != nil {
+			t.Fatal(err)
+		}
+
+		if _, err := wm.WorkItemZoom(wm.WorkspaceRootID(), itemA.ID(), 1); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("work item id not found", func(t *testing.T) {
+		wm := model.NewWorkspaceModel(model.NewWorkspace(
+			model.NewColumn("Backlog", itemA),
+		))
+
+		wantErr := model.ErrWorkItemNotFound
+
+		if _, err := wm.WorkItemZoom(wm.WorkspaceRootID(), itemB.ID(), 0); !errors.Is(err, wantErr) {
+			t.Fatalf("expected error %v, got %v", wantErr, err)
+		}
+	})
+}
+
 func TestSequentialMutationsUseLatestRevision(t *testing.T) {
 	wm := model.NewWorkspaceModel(model.NewWorkspace(model.NewColumn("Column", itemA, itemB)))
 

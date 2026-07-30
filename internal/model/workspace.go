@@ -93,6 +93,32 @@ func NewWorkspace(columns ...Column) Workspace {
 	}
 }
 
+func (ws *Workspace) attachChildWorkspaceID(itemID WorkItemID, childID WorkspaceID) error {
+	pos, err := ws.findWorkItemPosition(itemID)
+	if err != nil {
+		return ErrWorkItemNotFound
+	}
+
+	item := &ws.columns[pos.ColumnIdx].workItems[pos.ItemIdx]
+	item.attachChildWorkspaceID(childID)
+	return nil
+}
+
+func (ws *Workspace) getChildWorkspaceID(itemID WorkItemID) (childID WorkspaceID, childExists bool, err error) {
+	pos, err := ws.findWorkItemPosition(itemID)
+	if err != nil {
+		return "", false, ErrWorkItemNotFound
+	}
+
+	item := &ws.columns[pos.ColumnIdx].workItems[pos.ItemIdx]
+
+	if item.hasChildWorkspace() {
+		return item.childWorkspaceID(), true, nil
+	}
+
+	return "", false, nil
+}
+
 // clone returns a deep copy of ws that preserves its ID.
 func (ws *Workspace) clone() Workspace {
 	columns := make([]Column, len(ws.columns))

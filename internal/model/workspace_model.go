@@ -13,7 +13,7 @@ import (
 // no-ops leave it unchanged.
 type WorkspaceModel struct {
 	mu              sync.RWMutex
-	workspace       Workspace
+	workspaces      map[WorkspaceID]Workspace
 	rootWorkspaceID WorkspaceID
 	revision        uint64
 }
@@ -21,7 +21,9 @@ type WorkspaceModel struct {
 // NewWorkspaceModel creates a WorkspaceModel that owns a deep copy of ws.
 func NewWorkspaceModel(ws Workspace) *WorkspaceModel {
 	return &WorkspaceModel{
-		workspace:       ws.clone(),
+		workspaces: map[WorkspaceID]Workspace{
+			ws.id: ws.clone(),
+		},
 		rootWorkspaceID: ws.id,
 	}
 }
@@ -35,12 +37,13 @@ func (wm *WorkspaceModel) WorkspaceView(workspaceID WorkspaceID) (WorkspaceView,
 	wm.mu.RLock()
 	defer wm.mu.RUnlock()
 
-	if workspaceID != wm.rootWorkspaceID {
+	ws, found := wm.workspaces[workspaceID]
+	if !found {
 		return WorkspaceView{}, ErrWorkspaceNotFound
 	}
 
 	return WorkspaceView{
-		Columns:  wm.workspace.view(),
+		Columns:  ws.view(),
 		Revision: wm.revision,
 		ID:       workspaceID,
 	}, nil
@@ -51,6 +54,37 @@ func (wm *WorkspaceModel) WorkspaceRootID() WorkspaceID {
 	defer wm.mu.RUnlock()
 
 	return wm.rootWorkspaceID
+}
+
+func (wm *WorkspaceModel) WorkItemZoom(workspaceID WorkspaceID, itemID WorkItemID, expectedRevision uint64) (WorkspaceID, error) {
+	var childID WorkspaceID
+
+	err := wm.mutate(workspaceID, expectedRevision, func(w *Workspace) (updated bool, err error) {
+		var found bool
+
+		childID, found, err = w.getChildWorkspaceID(itemID)
+		if err != nil {
+			return false, err
+		}
+
+		if found {
+			return false, nil
+		}
+
+		ws := defaultWorkspace()
+		wm.workspaces[ws.id] = ws
+
+		w.attachChildWorkspaceID(itemID, ws.id)
+
+		childID = ws.id
+		return true, nil
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	return childID, nil
 }
 
 // WorkItemAdd trims and appends a new item to the selected column.
@@ -88,12 +122,21 @@ func (wm *WorkspaceModel) WorkItemMovePosition(workspaceID WorkspaceID, expected
 	})
 }
 
+func defaultWorkspace() Workspace {
+	return NewWorkspace(
+		NewColumn("Backlog"),
+		NewColumn("In Progress"),
+		NewColumn("Done"),
+	)
+}
+
 // mutate applies mutation when expectedRevision matches the current revision.
 func (wm *WorkspaceModel) mutate(workspaceID WorkspaceID, expectedRevision uint64, mutation func(*Workspace) (bool, error)) error {
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
 
-	if workspaceID != wm.rootWorkspaceID {
+	ws, found := wm.workspaces[workspaceID]
+	if !found {
 		return ErrWorkspaceNotFound
 	}
 
@@ -101,13 +144,15 @@ func (wm *WorkspaceModel) mutate(workspaceID WorkspaceID, expectedRevision uint6
 		return fmt.Errorf("%w: expected %d, actual %d", ErrRevisionConflict, expectedRevision, wm.revision)
 	}
 
-	updated, err := mutation(&wm.workspace)
+	updated, err := mutation(&ws)
 	if err != nil {
 		return err
 	}
 
 	if updated {
 		wm.revision++
+		// update workspaces map, because lookup only returns a copy
+		wm.workspaces[workspaceID] = ws
 	}
 
 	return nil

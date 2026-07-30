@@ -223,6 +223,47 @@ func (app *application) workItemMove(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/workspaces/"+workspaceID.String(), http.StatusSeeOther)
 }
 
+func (app *application) workItemZoom(w http.ResponseWriter, r *http.Request) {
+	workspaceID, err := model.ParseWorkspaceID(r.PathValue("workspaceID"))
+	if err != nil {
+		app.clientError(w, http.StatusUnprocessableEntity)
+		return
+	}
+
+	itemID, err := model.ParseWorkItemID(r.PathValue("id"))
+	if err != nil {
+		app.clientError(w, http.StatusUnprocessableEntity)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		app.clientError(w, http.StatusUnprocessableEntity)
+		return
+	}
+
+	revision, err := strconv.ParseUint(r.PostForm.Get("revision"), 10, 64)
+	if err != nil {
+		app.clientError(w, http.StatusUnprocessableEntity)
+		return
+	}
+
+	childID, err := app.workspaceModel.WorkItemZoom(workspaceID, itemID, revision)
+	if err != nil {
+		switch {
+		case errors.Is(err, model.ErrWorkItemNotFound),
+			errors.Is(err, model.ErrWorkspaceNotFound):
+			app.clientError(w, http.StatusNotFound)
+		case errors.Is(err, model.ErrRevisionConflict):
+			app.clientError(w, http.StatusConflict)
+		default:
+			app.serverError(w, r, err)
+		}
+		return
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/workspaces/%s", childID), http.StatusSeeOther)
+}
+
 func healthz(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprintln(w, `{"status": "OK"}`)
