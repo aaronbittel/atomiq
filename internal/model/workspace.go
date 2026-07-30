@@ -10,71 +10,6 @@ import (
 // WorkspaceID identifies a workspace.
 type WorkspaceID string
 
-// WorkspaceIDLength is the number of characters generated for workspace IDs.
-const WorkspaceIDLength = 8
-
-// newWorkspaceID returns a random workspace ID.
-func newWorkspaceID() WorkspaceID {
-	return WorkspaceID(rand.Text()[:WorkspaceIDLength])
-}
-
-// ParseWorkspaceID validates s and returns it as a WorkspaceID.
-func ParseWorkspaceID(s string) (WorkspaceID, error) {
-	if len(s) != WorkspaceIDLength {
-		return "", ErrInvalidWorkspaceIDFormat
-	}
-	return WorkspaceID(s), nil
-}
-
-// String returns the raw workspace ID value.
-func (wid WorkspaceID) String() string {
-	return string(wid)
-}
-
-// MoveDirection describes a visual move in the rendered workspace.
-//
-// Up and down move within a column; left and right move to the end of the
-// neighboring column.
-type MoveDirection string
-
-const (
-	// DirectionUp moves a work item one position earlier in its column.
-	DirectionUp MoveDirection = "up"
-	// DirectionDown moves a work item one position later in its column.
-	DirectionDown MoveDirection = "down"
-	// DirectionRight moves a work item to the end of the next column.
-	DirectionRight MoveDirection = "right"
-	// DirectionLeft moves a work item to the end of the previous column.
-	DirectionLeft MoveDirection = "left"
-)
-
-// ParseMoveDirection converts form input into a MoveDirection.
-func ParseMoveDirection(s string) (MoveDirection, error) {
-	switch s {
-	case "up":
-		return DirectionUp, nil
-	case "down":
-		return DirectionDown, nil
-	case "right":
-		return DirectionRight, nil
-	case "left":
-		return DirectionLeft, nil
-	default:
-		return "", fmt.Errorf("%w: %q", ErrInvalidMoveDirection, s)
-	}
-}
-
-// WorkItemInsertionPoint identifies where a work item can be inserted.
-type WorkItemInsertionPoint struct {
-	// ColumnIdx is the index of the destination column.
-	ColumnIdx int
-	// ItemIdx is an insertion index within the destination column.
-	//
-	// For a column containing [A, B, C], index 0 inserts before A, index 1
-	// inserts between A and B, and index 3 appends after C.
-	ItemIdx int
-}
-
 // Workspace contains the columns and work items in one work context.
 type Workspace struct {
 	id      WorkspaceID
@@ -90,44 +25,6 @@ func NewWorkspace(columns ...Column) Workspace {
 	return Workspace{
 		id:      newWorkspaceID(),
 		columns: clonedColumns,
-	}
-}
-
-func (ws *Workspace) attachChildWorkspaceID(itemID WorkItemID, childID WorkspaceID) error {
-	pos, err := ws.findWorkItemPosition(itemID)
-	if err != nil {
-		return ErrWorkItemNotFound
-	}
-
-	item := &ws.columns[pos.ColumnIdx].workItems[pos.ItemIdx]
-	item.attachChildWorkspaceID(childID)
-	return nil
-}
-
-func (ws *Workspace) getChildWorkspaceID(itemID WorkItemID) (childID WorkspaceID, childExists bool, err error) {
-	pos, err := ws.findWorkItemPosition(itemID)
-	if err != nil {
-		return "", false, ErrWorkItemNotFound
-	}
-
-	item := &ws.columns[pos.ColumnIdx].workItems[pos.ItemIdx]
-
-	if item.hasChildWorkspace() {
-		return item.childWorkspaceID(), true, nil
-	}
-
-	return "", false, nil
-}
-
-// clone returns a deep copy of ws that preserves its ID.
-func (ws *Workspace) clone() Workspace {
-	columns := make([]Column, len(ws.columns))
-	for i, col := range ws.columns {
-		columns[i] = col.clone()
-	}
-	return Workspace{
-		id:      ws.id,
-		columns: columns,
 	}
 }
 
@@ -196,6 +93,17 @@ func (ws *Workspace) moveInDirection(id WorkItemID, direction MoveDirection) (up
 	return true, nil
 }
 
+// WorkItemInsertionPoint identifies where a work item can be inserted.
+type WorkItemInsertionPoint struct {
+	// ColumnIdx is the index of the destination column.
+	ColumnIdx int
+	// ItemIdx is an insertion index within the destination column.
+	//
+	// For a column containing [A, B, C], index 0 inserts before A, index 1
+	// inserts between A and B, and index 3 appends after C.
+	ItemIdx int
+}
+
 // moveToPosition moves a work item to an insertion point.
 func (ws *Workspace) moveToPosition(id WorkItemID, insertPoint WorkItemInsertionPoint) (updated bool, err error) {
 	from, err := ws.findWorkItemPosition(id)
@@ -215,6 +123,44 @@ func (ws *Workspace) moveToPosition(id WorkItemID, insertPoint WorkItemInsertion
 
 	ws.moveWorkItemToPosition(from, to)
 	return true, nil
+}
+
+func (ws *Workspace) attachChildWorkspaceID(itemID WorkItemID, childID WorkspaceID) error {
+	pos, err := ws.findWorkItemPosition(itemID)
+	if err != nil {
+		return ErrWorkItemNotFound
+	}
+
+	item := &ws.columns[pos.ColumnIdx].workItems[pos.ItemIdx]
+	item.attachChildWorkspaceID(childID)
+	return nil
+}
+
+func (ws *Workspace) getChildWorkspaceID(itemID WorkItemID) (childID WorkspaceID, childExists bool, err error) {
+	pos, err := ws.findWorkItemPosition(itemID)
+	if err != nil {
+		return "", false, ErrWorkItemNotFound
+	}
+
+	item := &ws.columns[pos.ColumnIdx].workItems[pos.ItemIdx]
+
+	if item.hasChildWorkspace() {
+		return item.childWorkspaceID(), true, nil
+	}
+
+	return "", false, nil
+}
+
+// clone returns a deep copy of ws that preserves its ID.
+func (ws *Workspace) clone() Workspace {
+	columns := make([]Column, len(ws.columns))
+	for i, col := range ws.columns {
+		columns[i] = col.clone()
+	}
+	return Workspace{
+		id:      ws.id,
+		columns: columns,
+	}
 }
 
 // workItemPosition identifies the current location of an existing work item.
@@ -341,6 +287,60 @@ func (ws *Workspace) isValidToPosition(pos WorkItemInsertionPoint) error {
 	}
 
 	return nil
+}
+
+// WorkspaceIDLength is the number of characters generated for workspace IDs.
+const WorkspaceIDLength = 8
+
+// newWorkspaceID returns a random workspace ID.
+func newWorkspaceID() WorkspaceID {
+	return WorkspaceID(rand.Text()[:WorkspaceIDLength])
+}
+
+// ParseWorkspaceID validates s and returns it as a WorkspaceID.
+func ParseWorkspaceID(s string) (WorkspaceID, error) {
+	if len(s) != WorkspaceIDLength {
+		return "", ErrInvalidWorkspaceIDFormat
+	}
+	return WorkspaceID(s), nil
+}
+
+// String returns the raw workspace ID value.
+func (wid WorkspaceID) String() string {
+	return string(wid)
+}
+
+// MoveDirection describes a visual move in the rendered workspace.
+//
+// Up and down move within a column; left and right move to the end of the
+// neighboring column.
+type MoveDirection string
+
+const (
+	// DirectionUp moves a work item one position earlier in its column.
+	DirectionUp MoveDirection = "up"
+	// DirectionDown moves a work item one position later in its column.
+	DirectionDown MoveDirection = "down"
+	// DirectionRight moves a work item to the end of the next column.
+	DirectionRight MoveDirection = "right"
+	// DirectionLeft moves a work item to the end of the previous column.
+	DirectionLeft MoveDirection = "left"
+)
+
+// ParseMoveDirection converts form input into a MoveDirection.
+func ParseMoveDirection(s string) (MoveDirection, error) {
+	switch s {
+	case "up":
+		return DirectionUp, nil
+	case "down":
+		return DirectionDown, nil
+	case "right":
+		return DirectionRight, nil
+	case "left":
+		return DirectionLeft, nil
+	default:
+		return "", fmt.Errorf("%w: %q", ErrInvalidMoveDirection, s)
+	}
 }
 
 // sameEffectivePosition reports whether a same-column move would leave the item in place.
