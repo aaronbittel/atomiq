@@ -8,15 +8,16 @@ import (
 // WorkspaceModel owns and synchronizes the mutable workspace state.
 //
 // Mutation methods use optimistic concurrency control. The supplied expected revision
-// must match the current workspace revision, otherwise they return ErrRevisionConflict.
-// The revision is incremented only when an operation changes the workspace; successful
-// no-ops leave it unchanged.
+// must match the target workspace revision, otherwise they return ErrRevisionConflict.
+// Each workspace has its own revision, which is incremented only when an operation
+// changes that workspace; successful no-ops leave it unchanged.
 type WorkspaceModel struct {
 	mu              sync.RWMutex
 	workspaces      map[WorkspaceID]revisionedWorkspace
 	rootWorkspaceID WorkspaceID
 }
 
+// revisionedWorkspace stores one workspace with its optimistic concurrency revision.
 type revisionedWorkspace struct {
 	workspace Workspace
 	revision  uint64
@@ -59,6 +60,7 @@ func (wm *WorkspaceModel) WorkspaceView(workspaceID WorkspaceID) (WorkspaceView,
 	}, nil
 }
 
+// WorkspaceRootID returns the ID of the top-level workspace.
 func (wm *WorkspaceModel) WorkspaceRootID() WorkspaceID {
 	wm.mu.RLock()
 	defer wm.mu.RUnlock()
@@ -66,6 +68,11 @@ func (wm *WorkspaceModel) WorkspaceRootID() WorkspaceID {
 	return wm.rootWorkspaceID
 }
 
+// WorkItemZoom creates or returns the child workspace owned by itemID.
+//
+// Creating a child workspace updates the parent workspace revision. Returning an
+// existing child workspace is a successful no-op and leaves the parent revision
+// unchanged.
 func (wm *WorkspaceModel) WorkItemZoom(workspaceID WorkspaceID, itemID WorkItemID, expectedRevision uint64) (WorkspaceID, error) {
 	var childID WorkspaceID
 
@@ -98,6 +105,8 @@ func (wm *WorkspaceModel) WorkItemZoom(workspaceID WorkspaceID, itemID WorkItemI
 }
 
 // WorkItemAdd trims and appends a new item to the selected column.
+//
+// It returns the generated ID of the new item when the workspace was updated.
 func (wm *WorkspaceModel) WorkItemAdd(workspaceID WorkspaceID, expectedRevision uint64, columnIdx int, name string) (WorkItemID, error) {
 	var itemID WorkItemID
 	err := wm.mutate(workspaceID, expectedRevision, func(w *Workspace) (updated bool, err error) {

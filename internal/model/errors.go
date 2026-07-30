@@ -20,7 +20,8 @@ var (
 	ErrInvalidWorkItemIDFormat = errors.New("invalid work item id format")
 	// ErrInvalidWorkspaceIDFormat indicates that a workspace ID has an invalid shape.
 	ErrInvalidWorkspaceIDFormat = errors.New("invalid workspace id format")
-	ErrWorkspaceNotFound        = errors.New("workspace not found")
+	// ErrWorkspaceNotFound indicates that no workspace exists for the supplied ID.
+	ErrWorkspaceNotFound = errors.New("workspace not found")
 )
 
 // columnIdxErr returns an ErrInvalidPosition for a column index access.
