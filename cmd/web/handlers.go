@@ -114,7 +114,7 @@ func (app *application) workItemPost(w http.ResponseWriter, r *http.Request) {
 
 	workItemName := r.PostForm.Get("name")
 
-	if err := app.workspaceModel.WorkItemAdd(workspaceID, revision, columnIdx, workItemName); err != nil {
+	if _, err := app.workspaceModel.WorkItemAdd(workspaceID, revision, columnIdx, workItemName); err != nil {
 		switch {
 		case errors.Is(err, model.ErrWorkspaceNotFound):
 			app.clientError(w, http.StatusNotFound)

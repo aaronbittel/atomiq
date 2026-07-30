@@ -19,7 +19,7 @@ func TestAdd(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		ws := NewWorkspace(column("Column", A))
 
-		updated, err := ws.add(0, "  New item  ")
+		itemID, updated, err := ws.add(0, "  New item  ")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -28,19 +28,14 @@ func TestAdd(t *testing.T) {
 			t.Fatal("ws should have been updated")
 		}
 
-		items := ws.columns[0].workItems
+		want := workspaceWithID(ws.id,
+			NewColumn("Column", A, WorkItem{
+				id:   itemID,
+				name: "New item",
+			}),
+		)
 
-		if len(items) != 2 {
-			t.Fatalf("expected 2 work items, got %d", len(items))
-		}
-
-		if items[1].name != "New item" {
-			t.Fatalf("expected trimmed name %q, got %q", "New item", items[1].name)
-		}
-
-		if _, err := ParseWorkItemID(items[1].id.String()); err != nil {
-			t.Fatalf("invalid work item ID %q: %v", items[1].id, err)
-		}
+		assertWorkspaceEqual(t, want, ws)
 	})
 
 	t.Run("blank name", func(t *testing.T) {
@@ -49,7 +44,7 @@ func TestAdd(t *testing.T) {
 
 		wantErr := ErrInvalidWorkItemName
 
-		updated, err := ws.add(0, "   ")
+		_, updated, err := ws.add(0, "   ")
 		if !errors.Is(err, wantErr) {
 			t.Fatalf("expected error %v, got %v", wantErr, err)
 		}
@@ -66,7 +61,7 @@ func TestAdd(t *testing.T) {
 
 		wantErr := ErrInvalidPosition
 
-		updated, err := ws.add(1, "New item")
+		_, updated, err := ws.add(1, "New item")
 		if !errors.Is(err, wantErr) {
 			t.Fatalf("expected error %v, got %v", wantErr, err)
 		}

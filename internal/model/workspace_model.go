@@ -88,10 +88,18 @@ func (wm *WorkspaceModel) WorkItemZoom(workspaceID WorkspaceID, itemID WorkItemI
 }
 
 // WorkItemAdd trims and appends a new item to the selected column.
-func (wm *WorkspaceModel) WorkItemAdd(workspaceID WorkspaceID, expectedRevision uint64, columnIdx int, name string) error {
-	return wm.mutate(workspaceID, expectedRevision, func(w *Workspace) (bool, error) {
-		return w.add(columnIdx, name)
+func (wm *WorkspaceModel) WorkItemAdd(workspaceID WorkspaceID, expectedRevision uint64, columnIdx int, name string) (WorkItemID, error) {
+	var itemID WorkItemID
+	err := wm.mutate(workspaceID, expectedRevision, func(w *Workspace) (updated bool, err error) {
+		itemID, updated, err = w.add(columnIdx, name)
+		return updated, err
 	})
+
+	if err != nil {
+		return "", err
+	}
+
+	return itemID, nil
 }
 
 // WorkItemDelete removes the item with itemID.

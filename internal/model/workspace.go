@@ -44,19 +44,20 @@ func (ws *Workspace) view() []ColumnView {
 }
 
 // add trims and appends a new work item to the selected column.
-func (ws *Workspace) add(columnIdx int, name string) (updated bool, err error) {
+func (ws *Workspace) add(columnIdx int, name string) (itemID WorkItemID, updated bool, err error) {
 	if !validSliceAccess(columnIdx, len(ws.columns)) {
-		return false, columnIdxErr(columnIdx, len(ws.columns))
+		return "", false, columnIdxErr(columnIdx, len(ws.columns))
 	}
 
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return false, ErrInvalidWorkItemName
+		return "", false, ErrInvalidWorkItemName
 	}
 
-	ws.columns[columnIdx].workItems = append(ws.columns[columnIdx].workItems, NewWorkItem(name))
+	newItem := NewWorkItem(name)
+	ws.columns[columnIdx].workItems = append(ws.columns[columnIdx].workItems, newItem)
 
-	return true, nil
+	return newItem.id, true, nil
 }
 
 // delete removes the work item with id.

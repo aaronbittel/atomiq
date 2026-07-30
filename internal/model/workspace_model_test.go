@@ -47,24 +47,24 @@ func TestWorkItemAdd(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		wm := model.NewWorkspaceModel(model.NewWorkspace(model.NewColumn("Column")))
 
-		if err := wm.WorkItemAdd(wm.WorkspaceRootID(), 0, 0, "New item"); err != nil {
+		itemID, err := wm.WorkItemAdd(wm.WorkspaceRootID(), 0, 0, "New item")
+		if err != nil {
 			t.Fatal(err)
 		}
+
+		want := workspaceView(wm.WorkspaceRootID(), 1,
+			columnView("Column", model.WorkItemView{
+				ID:   itemID,
+				Name: "New item",
+			}))
 
 		got, err := wm.WorkspaceView(wm.WorkspaceRootID())
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if got.Revision != 1 {
-			t.Fatalf("expected revision to be 1, got %d", got.Revision)
-		}
-
-		if len(got.Columns[0].WorkItems) != 1 {
-			t.Fatalf("expected one item, got %d", len(got.Columns[0].WorkItems))
-		}
-		if got.Columns[0].WorkItems[0].Name != "New item" {
-			t.Fatalf("expected trimmed item name")
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("workspace view mismatch (-want +got):\n%s", diff)
 		}
 	})
 
@@ -73,7 +73,7 @@ func TestWorkItemAdd(t *testing.T) {
 
 		wantErr := model.ErrInvalidPosition
 
-		if err := wm.WorkItemAdd(wm.WorkspaceRootID(), 0, 1, "invalid column"); !errors.Is(err, wantErr) {
+		if _, err := wm.WorkItemAdd(wm.WorkspaceRootID(), 0, 1, "invalid column"); !errors.Is(err, wantErr) {
 			t.Fatalf("expected %v, got %v", wantErr, err)
 		}
 	})
