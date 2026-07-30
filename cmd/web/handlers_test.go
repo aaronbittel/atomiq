@@ -392,6 +392,146 @@ func TestWorkItemMove(t *testing.T) {
 	})
 }
 
+func TestWorkItemZoom(t *testing.T) {
+	t.Run("zooming into work item twice returns same location", func(t *testing.T) {
+		item := model.NewWorkItem("Item A")
+		wm := model.NewWorkspaceModel(model.NewWorkspace(model.NewColumn("Column", item)))
+
+		app := newTestApplication(t, wm)
+		ts := newTestServer(t, app.routes())
+		defer ts.Close()
+
+		form := url.Values{}
+		form.Set("revision", "0")
+
+		resp := ts.postForm(t, fmt.Sprintf("/workspaces/%s/work-items/%s/zoom", wm.WorkspaceRootID(), item.ID()), form)
+		assertStatusCode(t, http.StatusSeeOther, resp.StatusCode)
+
+		firstLoc := resp.Header.Get("Location")
+		if firstLoc == "" {
+			t.Fatal("expected redirect location")
+		}
+
+		rootLoc := "/workspaces/" + wm.WorkspaceRootID().String()
+		if firstLoc == rootLoc {
+			t.Fatalf("expected redirect to child workspace, got root workspace %q", firstLoc)
+		}
+
+		form = url.Values{}
+		form.Set("revision", "1")
+
+		resp = ts.postForm(t, fmt.Sprintf("/workspaces/%s/work-items/%s/zoom", wm.WorkspaceRootID(), item.ID()), form)
+		assertRedirect(t, resp, http.StatusSeeOther, firstLoc)
+	})
+
+	t.Run("new zoomed in workspace has revision 0", func(t *testing.T) {
+		t.Chdir("../../")
+
+		item := model.NewWorkItem("Item A")
+		wm := model.NewWorkspaceModel(model.NewWorkspace(model.NewColumn("Column", item)))
+
+		if _, err := wm.WorkItemAdd(wm.WorkspaceRootID(), 0, 0, "Bump Version"); err != nil {
+			t.Fatal(err)
+		}
+
+		app := newTestApplication(t, wm)
+		ts := newTestServer(t, app.routes())
+		defer ts.Close()
+
+		form := url.Values{}
+		form.Set("revision", "1")
+
+		resp := ts.postForm(t, fmt.Sprintf("/workspaces/%s/work-items/%s/zoom", wm.WorkspaceRootID(), item.ID()), form)
+		assertStatusCode(t, http.StatusSeeOther, resp.StatusCode)
+		loc := resp.Header.Get("Location")
+		if loc == "" {
+			t.Fatal("expected redirect location")
+		}
+
+		resp = ts.get(t, loc)
+		assertStatusCode(t, http.StatusOK, resp.StatusCode)
+
+		assertContains(t, resp.Body, `name="revision" value="0"`)
+	})
+
+	t.Run("invalid", func(t *testing.T) {
+		tests := []struct {
+			name       string
+			mutateForm func(form url.Values)
+			mutateUrl  func(*model.WorkspaceModel, model.WorkItem) string
+			wantCode   int
+		}{
+			{
+				name: "workspace id format",
+				mutateUrl: func(wm *model.WorkspaceModel, wi model.WorkItem) string {
+					return fmt.Sprintf("/workspaces/%s/work-items/%s/zoom", "invalid-id", wi.ID())
+				},
+				wantCode: http.StatusUnprocessableEntity,
+			},
+			{
+				name: "item id format",
+				mutateUrl: func(wm *model.WorkspaceModel, wi model.WorkItem) string {
+					return fmt.Sprintf("/workspaces/%s/work-items/%s/zoom", wm.WorkspaceRootID(), "invalid-id")
+				},
+				wantCode: http.StatusUnprocessableEntity,
+			},
+			{
+				name: "revision format",
+				mutateForm: func(form url.Values) {
+					form.Set("revision", "invalid")
+				},
+				wantCode: http.StatusUnprocessableEntity,
+			},
+			{
+				name: "work item not found",
+				mutateUrl: func(wm *model.WorkspaceModel, wi model.WorkItem) string {
+					return fmt.Sprintf("/workspaces/%s/work-items/%s/zoom", wm.WorkspaceRootID(), newUnknownWorkItemID(wi.ID()))
+				},
+				wantCode: http.StatusNotFound,
+			},
+			{
+				name: "work space not found",
+				mutateUrl: func(wm *model.WorkspaceModel, wi model.WorkItem) string {
+					return fmt.Sprintf("/workspaces/%s/work-items/%s/zoom", newUnknownWorkspaceID(wm.WorkspaceRootID()), wi.ID())
+				},
+				wantCode: http.StatusNotFound,
+			},
+			{
+				name: "revision conflict",
+				mutateForm: func(form url.Values) {
+					form.Set("revision", "999")
+				},
+				wantCode: http.StatusConflict,
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				item := model.NewWorkItem("Item A")
+				wm := model.NewWorkspaceModel(model.NewWorkspace(model.NewColumn("Column", item)))
+
+				app := newTestApplication(t, wm)
+				ts := newTestServer(t, app.routes())
+				defer ts.Close()
+
+				form := url.Values{}
+				form.Set("revision", "0")
+				if tt.mutateForm != nil {
+					tt.mutateForm(form)
+				}
+
+				url := fmt.Sprintf("/workspaces/%s/work-items/%s/zoom", wm.WorkspaceRootID(), item.ID())
+				if tt.mutateUrl != nil {
+					url = tt.mutateUrl(wm, item)
+				}
+
+				resp := ts.postForm(t, url, form)
+				assertStatusCode(t, tt.wantCode, resp.StatusCode)
+			})
+		}
+	})
+}
+
 func TestHome(t *testing.T) {
 	t.Run("redirects to workspace root", func(t *testing.T) {
 		wm := model.NewWorkspaceModel(model.NewWorkspace())
@@ -434,6 +574,15 @@ func TestWorkspaceView(t *testing.T) {
 func newUnknownWorkItemID(existing model.WorkItemID) model.WorkItemID {
 	for {
 		id := model.NewWorkItem("Not inserted").ID()
+		if id != existing {
+			return id
+		}
+	}
+}
+
+func newUnknownWorkspaceID(existing model.WorkspaceID) model.WorkspaceID {
+	for {
+		id := model.NewWorkspaceModel(model.NewWorkspace()).WorkspaceRootID()
 		if id != existing {
 			return id
 		}
