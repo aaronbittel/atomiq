@@ -126,6 +126,20 @@ func (ws *Workspace) moveToPosition(id WorkItemID, insertPoint WorkItemInsertion
 	return true, nil
 }
 
+func (ws *Workspace) childWorkspaceIDs() []WorkspaceID {
+	ids := []WorkspaceID{}
+
+	for _, col := range ws.columns {
+		for _, item := range col.workItems {
+			if item.hasChildWorkspace() {
+				ids = append(ids, item.childWorkspaceID())
+			}
+		}
+	}
+
+	return ids
+}
+
 func (ws *Workspace) attachChildWorkspaceID(itemID WorkItemID, childID WorkspaceID) error {
 	pos, err := ws.findWorkItemPosition(itemID)
 	if err != nil {

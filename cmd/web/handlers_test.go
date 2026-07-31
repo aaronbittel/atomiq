@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/aaronbittel/atomiq/internal/model"
@@ -157,6 +158,57 @@ func TestWorkItemDelete(t *testing.T) {
 
 		assertNotContains(t, resp.Body, workItem1Name)
 		assertContains(t, resp.Body, workItem2Name)
+	})
+
+	t.Run("recursive deletion removes zoomed child workspaces", func(t *testing.T) {
+		t.Chdir("../..")
+
+		parentItemName := "Parent Item"
+		parentItem := model.NewWorkItem(parentItemName)
+		wm := model.NewWorkspaceModel(
+			model.NewWorkspace(model.NewColumn("Backlog", parentItem)),
+		)
+
+		app := newTestApplication(t, wm)
+		ts := newTestServer(t, app.routes())
+		defer ts.Close()
+
+		url := workItemZoomURL(wm.WorkspaceRootID(), parentItem.ID())
+		form := workItemZoomForm(0)
+		resp := ts.postForm(t, url, form)
+		assertStatusCode(t, http.StatusSeeOther, resp.StatusCode)
+
+		childLoc := resp.Header.Get("Location")
+		childID := workspaceIDFromViewLocation(t, childLoc)
+
+		childItemID, err := wm.WorkItemAdd(childID, 0, 0, "Child Item")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		url = workItemZoomURL(childID, childItemID)
+		form = workItemZoomForm(1)
+		resp = ts.postForm(t, url, form)
+		assertStatusCode(t, http.StatusSeeOther, resp.StatusCode)
+
+		childChildLoc := resp.Header.Get("Location")
+		childChildID := workspaceIDFromViewLocation(t, childChildLoc)
+
+		url = workItemDeleteURL(wm.WorkspaceRootID(), parentItem.ID())
+		form = workItemDeleteForm(1)
+		resp = ts.postForm(t, url, form)
+		assertRedirect(t, resp, http.StatusSeeOther, workspacesViewURL(wm.WorkspaceRootID()))
+
+		resp = ts.get(t, workspacesViewURL(wm.WorkspaceRootID()))
+		assertStatusCode(t, http.StatusOK, resp.StatusCode)
+		assertContains(t, resp.Body, `<h1>Root Workspace</h1>`)
+		assertNotContains(t, resp.Body, parentItemName)
+
+		resp = ts.get(t, workspacesViewURL(childID))
+		assertStatusCode(t, http.StatusNotFound, resp.StatusCode)
+
+		resp = ts.get(t, workspacesViewURL(childChildID))
+		assertStatusCode(t, http.StatusNotFound, resp.StatusCode)
 	})
 
 	t.Run("client error", func(t *testing.T) {
@@ -656,6 +708,22 @@ func workItemAddForm(columnIdx int, name string, revision uint64) url.Values {
 
 func workspacesViewURL(id model.WorkspaceID) string {
 	return fmt.Sprintf("/workspaces/%s", id)
+}
+
+func workspaceIDFromViewLocation(t *testing.T, loc string) model.WorkspaceID {
+	t.Helper()
+
+	rawID, ok := strings.CutPrefix(loc, "/workspaces/")
+	if !ok {
+		t.Fatalf("expected workspace view location, got %q", loc)
+	}
+
+	id, err := model.ParseWorkspaceID(rawID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return id
 }
 
 func workItemDeleteURL(workspaceID model.WorkspaceID, itemID model.WorkItemID) string {

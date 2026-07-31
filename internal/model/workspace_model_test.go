@@ -169,6 +169,90 @@ func TestWorkItemDelete(t *testing.T) {
 			t.Fatalf("expected %v, got %v", wantErr, err)
 		}
 	})
+
+	t.Run("deletes child workspace subtree", func(t *testing.T) {
+		parentItem := model.NewWorkItem("Parent Item")
+		wm := model.NewWorkspaceModel(model.NewWorkspace(model.NewColumn("Column", parentItem)))
+
+		childID, err := wm.WorkItemZoom(wm.WorkspaceRootID(), parentItem.ID(), 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		childItemID, err := wm.WorkItemAdd(childID, 0, 0, "Child Item")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		childChildID, err := wm.WorkItemZoom(childID, childItemID, 1)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if err := wm.WorkItemDelete(wm.WorkspaceRootID(), 1, parentItem.ID()); err != nil {
+			t.Fatal(err)
+		}
+
+		wantRoot := workspaceRootView(wm.WorkspaceRootID(), 2, columnView("Column"))
+		gotRoot, err := wm.WorkspaceView(wm.WorkspaceRootID())
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if diff := cmp.Diff(wantRoot, gotRoot); diff != "" {
+			t.Errorf("root workspace view mismatch (-want +got):\n%s", diff)
+		}
+
+		if _, err := wm.WorkspaceView(childID); !errors.Is(err, model.ErrWorkspaceNotFound) {
+			t.Fatalf("expected child workspace to be deleted, got %v", err)
+		}
+
+		if _, err := wm.WorkspaceView(childChildID); !errors.Is(err, model.ErrWorkspaceNotFound) {
+			t.Fatalf("expected nested child workspace to be deleted, got %v", err)
+		}
+	})
+
+	t.Run("work item deletion with attached workspace does not delete sibling workspace", func(t *testing.T) {
+		item1 := model.NewWorkItem("Child Item 1")
+		item2Name := "Child Item 2"
+		item2 := model.NewWorkItem(item2Name)
+		wm := model.NewWorkspaceModel(model.NewWorkspace(
+			model.NewColumn("Column", item1, item2),
+		))
+
+		childID1, err := wm.WorkItemZoom(wm.WorkspaceRootID(), item1.ID(), 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		childID2, err := wm.WorkItemZoom(wm.WorkspaceRootID(), item2.ID(), 1)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if err := wm.WorkItemDelete(wm.WorkspaceRootID(), 2, item1.ID()); err != nil {
+			t.Fatal(err)
+		}
+
+		wantRoot := workspaceRootView(wm.WorkspaceRootID(), 3, columnView("Column", model.WorkItemView{
+			ID:   item2.ID(),
+			Name: item2Name,
+		}))
+		gotRoot, err := wm.WorkspaceView(wm.WorkspaceRootID())
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if diff := cmp.Diff(wantRoot, gotRoot); diff != "" {
+			t.Errorf("root workspace view mismatch (-want +got):\n%s", diff)
+		}
+
+		if _, err := wm.WorkspaceView(childID1); !errors.Is(err, model.ErrWorkspaceNotFound) {
+			t.Fatalf("expected child workspace to be deleted, got %v", err)
+		}
+
+		assertDefaultChildWorkspace(t, wm, childID2, wm.WorkspaceRootID(), item2Name, 0)
+	})
 }
 
 func TestWorkItemMoveDirection(t *testing.T) {

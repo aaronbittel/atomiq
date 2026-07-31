@@ -155,8 +155,53 @@ func (wm *WorkspaceModel) WorkItemAdd(workspaceID WorkspaceID, expectedRevision 
 // WorkItemDelete removes the item with itemID.
 func (wm *WorkspaceModel) WorkItemDelete(workspaceID WorkspaceID, expectedRevision uint64, itemID WorkItemID) error {
 	return wm.mutate(workspaceID, expectedRevision, func(w *Workspace) (bool, error) {
-		return w.delete(itemID)
+		wi, err := w.findWorkItem(itemID)
+		if err != nil {
+			return false, err
+		}
+
+		if !wi.hasChildWorkspace() {
+			return w.delete(itemID)
+		}
+
+		ids := wm.gatherChildWorkspaceSubtreeIDs(wi)
+
+		updated, err := w.delete(itemID)
+		if err != nil {
+			return false, err
+		}
+
+		for _, id := range ids {
+			delete(wm.workspaces, id)
+		}
+
+		return updated, nil
+
 	})
+}
+
+func (wm *WorkspaceModel) gatherChildWorkspaceSubtreeIDs(workItem WorkItem) []WorkspaceID {
+	if !workItem.hasChildWorkspace() {
+		panic("gatherChildWorkspaceSubtreeIDs(): work item has no child workspace")
+	}
+
+	idx := 0
+	childID := workItem.childWorkspaceID()
+	ids := []WorkspaceID{childID}
+
+	for idx < len(ids) {
+		id := ids[idx]
+		idx += 1
+
+		rws, found := wm.workspaces[id]
+		if !found {
+			panic("child workspace link points to missing workspace")
+		}
+
+		ids = append(ids, rws.workspace.childWorkspaceIDs()...)
+	}
+
+	return ids
 }
 
 // WorkItemMoveDirection moves an item one visual step.
