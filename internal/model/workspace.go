@@ -170,6 +170,15 @@ type workItemPosition struct {
 	ItemIdx   int
 }
 
+func (ws *Workspace) findWorkItem(id WorkItemID) (WorkItem, error) {
+	pos, err := ws.findWorkItemPosition(id)
+	if err != nil {
+		return WorkItem{}, err
+	}
+
+	return ws.columns[pos.ColumnIdx].workItems[pos.ItemIdx], nil
+}
+
 // findWorkItemPosition returns the current position of the work item with id.
 func (ws *Workspace) findWorkItemPosition(id WorkItemID) (workItemPosition, error) {
 	for colIdx, col := range ws.columns {

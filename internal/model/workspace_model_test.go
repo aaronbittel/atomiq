@@ -44,7 +44,8 @@ func TestWorkspaceView(t *testing.T) {
 	})
 
 	t.Run("view parent id is snapshot", func(t *testing.T) {
-		item := model.NewWorkItem("Item")
+		itemName := "Item"
+		item := model.NewWorkItem(itemName)
 		wm := model.NewWorkspaceModel(model.NewWorkspace(model.NewColumn("Column", item)))
 
 		childID, err := wm.WorkItemZoom(wm.WorkspaceRootID(), item.ID(), 0)
@@ -62,11 +63,12 @@ func TestWorkspaceView(t *testing.T) {
 
 		*view.ParentID = "mutated"
 
-		assertDefaultChildWorkspace(t, wm, childID, wm.WorkspaceRootID(), 0)
+		assertDefaultChildWorkspace(t, wm, childID, wm.WorkspaceRootID(), itemName, 0)
 	})
 
 	t.Run("child workspace has parentID", func(t *testing.T) {
-		item := model.NewWorkItem("Item")
+		itemName := "Item"
+		item := model.NewWorkItem(itemName)
 		wm := model.NewWorkspaceModel(model.NewWorkspace(model.NewColumn("Column", item)))
 
 		childID, err := wm.WorkItemZoom(wm.WorkspaceRootID(), item.ID(), 0)
@@ -74,7 +76,7 @@ func TestWorkspaceView(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		assertDefaultChildWorkspace(t, wm, childID, wm.WorkspaceRootID(), 0)
+		assertDefaultChildWorkspace(t, wm, childID, wm.WorkspaceRootID(), itemName, 0)
 	})
 
 	t.Run("child of child", func(t *testing.T) {
@@ -87,7 +89,8 @@ func TestWorkspaceView(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		childItemID, err := wm.WorkItemAdd(childID, 0, 0, "Child Item")
+		childItemName := "Child Item"
+		childItemID, err := wm.WorkItemAdd(childID, 0, 0, childItemName)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -97,7 +100,7 @@ func TestWorkspaceView(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		assertDefaultChildWorkspace(t, wm, childChildID, childID, 0)
+		assertDefaultChildWorkspace(t, wm, childChildID, childID, childItemName, 0)
 	})
 }
 
@@ -328,7 +331,7 @@ func TestWorkItemZoom(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		assertDefaultChildWorkspace(t, wm, childID, wm.WorkspaceRootID(), 0)
+		assertDefaultChildWorkspace(t, wm, childID, wm.WorkspaceRootID(), itemAName, 0)
 	})
 
 	t.Run("returns the same child workspace id", func(t *testing.T) {
@@ -410,7 +413,7 @@ func TestWorkItemZoom(t *testing.T) {
 			t.Errorf("workspace view mismatch (-want +got):\n%s", diff)
 		}
 
-		wantChildView := workspaceChildView(childID, wm.WorkspaceRootID(), 1,
+		wantChildView := workspaceChildView(childID, wm.WorkspaceRootID(), 1, itemAName,
 			columnView("Backlog", model.WorkItemView{
 				ID:   itemID,
 				Name: "New Child Item",
@@ -482,8 +485,8 @@ func TestWorkspaceViewHasNoUnexpectedReferenceFields(t *testing.T) {
 	}
 }
 
-func assertDefaultChildWorkspace(t *testing.T, wm *model.WorkspaceModel, id, parentID model.WorkspaceID, revision uint64) {
-	want := workspaceChildView(id, parentID, revision,
+func assertDefaultChildWorkspace(t *testing.T, wm *model.WorkspaceModel, id, parentID model.WorkspaceID, title string, revision uint64) {
+	want := workspaceChildView(id, parentID, revision, title,
 		columnView("Backlog"),
 		columnView("In Progress"),
 		columnView("Done"),

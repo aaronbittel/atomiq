@@ -267,6 +267,7 @@ func TestWorkItemMove(t *testing.T) {
 
 		want := model.WorkspaceView{
 			ID:       wm.WorkspaceRootID(),
+			Title:    "Root Workspace",
 			Revision: 1,
 			Columns: []model.ColumnView{
 				{
@@ -568,16 +569,59 @@ func TestWorkspaceRoot(t *testing.T) {
 }
 
 func TestWorkspaceView(t *testing.T) {
-	t.Chdir("../../")
+	t.Run("returns 200 OK", func(t *testing.T) {
+		t.Chdir("../../")
 
-	wm := model.NewWorkspaceModel(model.NewWorkspace())
+		wm := model.NewWorkspaceModel(model.NewWorkspace())
 
-	app := newTestApplication(t, wm)
-	ts := newTestServer(t, app.routes())
-	defer ts.Close()
+		app := newTestApplication(t, wm)
+		ts := newTestServer(t, app.routes())
+		defer ts.Close()
 
-	resp := ts.get(t, workspacesViewURL(wm.WorkspaceRootID()))
-	assertStatusCode(t, http.StatusOK, resp.StatusCode)
+		resp := ts.get(t, workspacesViewURL(wm.WorkspaceRootID()))
+		assertStatusCode(t, http.StatusOK, resp.StatusCode)
+	})
+
+	t.Run("root workspace title", func(t *testing.T) {
+		t.Chdir("../../")
+
+		wm := model.NewWorkspaceModel(model.NewWorkspace())
+
+		app := newTestApplication(t, wm)
+		ts := newTestServer(t, app.routes())
+		defer ts.Close()
+
+		resp := ts.get(t, workspacesViewURL(wm.WorkspaceRootID()))
+		assertStatusCode(t, http.StatusOK, resp.StatusCode)
+		assertContains(t, resp.Body, `<h1>Root Workspace</h1>`)
+
+	})
+
+	t.Run("child workspace title", func(t *testing.T) {
+		t.Chdir("../../")
+
+		itemName := "Item"
+		item := model.NewWorkItem(itemName)
+		wm := model.NewWorkspaceModel(
+			model.NewWorkspace(model.NewColumn("Column", item)),
+		)
+
+		childID, err := wm.WorkItemZoom(wm.WorkspaceRootID(), item.ID(), 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		app := newTestApplication(t, wm)
+		ts := newTestServer(t, app.routes())
+		defer ts.Close()
+
+		resp := ts.get(t, workspacesViewURL(childID))
+		assertStatusCode(t, http.StatusOK, resp.StatusCode)
+
+		want := fmt.Sprintf(`<h1>%s</h1>`, itemName)
+		assertContains(t, resp.Body, want)
+
+	})
 }
 
 func newUnknownWorkItemID(existing model.WorkItemID) model.WorkItemID {

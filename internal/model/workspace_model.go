@@ -19,15 +19,17 @@ type WorkspaceModel struct {
 
 // revisionedWorkspace stores one workspace with its optimistic concurrency revision.
 type revisionedWorkspace struct {
-	workspace Workspace
-	revision  uint64
-	parentID  *WorkspaceID
+	workspace        Workspace
+	revision         uint64
+	parentID         *WorkspaceID
+	parentWorkItemID *WorkItemID
 }
 
-func newRevisionedWorkspace(ws Workspace, parentID *WorkspaceID) revisionedWorkspace {
+func newRevisionedWorkspace(ws Workspace, parentID *WorkspaceID, parentWorkItemID *WorkItemID) revisionedWorkspace {
 	return revisionedWorkspace{
-		workspace: ws.clone(),
-		parentID:  parentID,
+		workspace:        ws.clone(),
+		parentID:         parentID,
+		parentWorkItemID: parentWorkItemID,
 	}
 }
 
@@ -35,11 +37,13 @@ func newRevisionedWorkspace(ws Workspace, parentID *WorkspaceID) revisionedWorks
 func NewWorkspaceModel(root Workspace) *WorkspaceModel {
 	return &WorkspaceModel{
 		workspaces: map[WorkspaceID]revisionedWorkspace{
-			root.id: newRevisionedWorkspace(root, nil),
+			root.id: newRevisionedWorkspace(root, nil, nil),
 		},
 		rootWorkspaceID: root.id,
 	}
 }
+
+const rootWorkspaceTitle = "Root Workspace"
 
 // WorkspaceView returns a detached snapshot of the current workspace.
 //
@@ -55,11 +59,35 @@ func (wm *WorkspaceModel) WorkspaceView(workspaceID WorkspaceID) (WorkspaceView,
 		return WorkspaceView{}, ErrWorkspaceNotFound
 	}
 
+	title := rootWorkspaceTitle
+
+	if rws.parentID == nil && rws.parentWorkItemID != nil {
+		panic("workspace has parent work item without parent workspace")
+	}
+
+	if rws.parentID != nil && rws.parentWorkItemID == nil {
+		panic("workspace has parent workspace without parent work item")
+	}
+
+	if rws.parentID != nil && rws.parentWorkItemID != nil {
+		parentWorkspace, found := wm.workspaces[*rws.parentID]
+		if !found {
+			panic("workspace parent link points to missing parent workspace")
+		}
+
+		parentWorkItem, err := parentWorkspace.workspace.findWorkItem(*rws.parentWorkItemID)
+		if err != nil {
+			return WorkspaceView{}, err
+		}
+		title = parentWorkItem.name
+	}
+
 	return WorkspaceView{
 		Columns:  rws.workspace.view(),
 		Revision: rws.revision,
 		ID:       workspaceID,
 		ParentID: cloneWorkspaceIDPtr(rws.parentID),
+		Title:    title,
 	}, nil
 }
 
@@ -92,7 +120,7 @@ func (wm *WorkspaceModel) WorkItemZoom(workspaceID WorkspaceID, itemID WorkItemI
 		}
 
 		ws := defaultWorkspace()
-		wm.workspaces[ws.id] = newRevisionedWorkspace(ws, &workspaceID)
+		wm.workspaces[ws.id] = newRevisionedWorkspace(ws, &workspaceID, &itemID)
 
 		w.attachChildWorkspaceID(itemID, ws.id)
 

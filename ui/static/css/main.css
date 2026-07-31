@@ -10,6 +10,22 @@ html, body {
     height: 100%;
 }
 
+.header {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    padding: 1rem 5rem;
+}
+
+.header a {
+    justify-self: start;
+}
+
+.header h1 {
+    grid-column: 2;
+    justify-self: center;
+}
+
 .workspace {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));

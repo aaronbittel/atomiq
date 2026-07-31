@@ -11,6 +11,7 @@
             {{if .Ws.ParentID}}
             <a href="/workspaces/{{.Ws.ParentID}}">Parent Workspace</a>
             {{end}}
+            <h1>{{.Ws.Title}}</h1>
         </div>
         <div class="workspace">
             {{range $columnIdx, $column := .Ws.Columns}}

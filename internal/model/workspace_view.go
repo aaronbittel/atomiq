@@ -10,6 +10,8 @@ type WorkspaceView struct {
 	ID WorkspaceID
 	// ParentID is the id of the parent workspace or nil if its the root.
 	ParentID *WorkspaceID
+	// Title of the workspace.
+	Title string
 }
 
 // ColumnView is the rendered representation of a workspace column.
