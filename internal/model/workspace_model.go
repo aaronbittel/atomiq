@@ -21,21 +21,23 @@ type WorkspaceModel struct {
 type revisionedWorkspace struct {
 	workspace Workspace
 	revision  uint64
+	parentID  *WorkspaceID
 }
 
-func newRevisionedWorkspace(ws Workspace) revisionedWorkspace {
+func newRevisionedWorkspace(ws Workspace, parentID *WorkspaceID) revisionedWorkspace {
 	return revisionedWorkspace{
 		workspace: ws.clone(),
+		parentID:  parentID,
 	}
 }
 
 // NewWorkspaceModel creates a WorkspaceModel that owns a deep copy of ws.
-func NewWorkspaceModel(ws Workspace) *WorkspaceModel {
+func NewWorkspaceModel(root Workspace) *WorkspaceModel {
 	return &WorkspaceModel{
 		workspaces: map[WorkspaceID]revisionedWorkspace{
-			ws.id: newRevisionedWorkspace(ws),
+			root.id: newRevisionedWorkspace(root, nil),
 		},
-		rootWorkspaceID: ws.id,
+		rootWorkspaceID: root.id,
 	}
 }
 
@@ -57,6 +59,7 @@ func (wm *WorkspaceModel) WorkspaceView(workspaceID WorkspaceID) (WorkspaceView,
 		Columns:  rws.workspace.view(),
 		Revision: rws.revision,
 		ID:       workspaceID,
+		ParentID: cloneWorkspaceIDPtr(rws.parentID),
 	}, nil
 }
 
@@ -89,7 +92,7 @@ func (wm *WorkspaceModel) WorkItemZoom(workspaceID WorkspaceID, itemID WorkItemI
 		}
 
 		ws := defaultWorkspace()
-		wm.workspaces[ws.id] = newRevisionedWorkspace(ws)
+		wm.workspaces[ws.id] = newRevisionedWorkspace(ws, &workspaceID)
 
 		w.attachChildWorkspaceID(itemID, ws.id)
 
@@ -183,4 +186,13 @@ func (wm *WorkspaceModel) mutate(workspaceID WorkspaceID, expectedRevision uint6
 	}
 
 	return nil
+}
+
+func cloneWorkspaceIDPtr(id *WorkspaceID) *WorkspaceID {
+	if id == nil {
+		return nil
+	}
+
+	cloned := *id
+	return &cloned
 }

@@ -307,8 +307,8 @@ func ParseWorkspaceID(s string) (WorkspaceID, error) {
 }
 
 // String returns the raw workspace ID value.
-func (wid WorkspaceID) String() string {
-	return string(wid)
+func (wsID WorkspaceID) String() string {
+	return string(wsID)
 }
 
 // MoveDirection describes a visual move in the rendered workspace.

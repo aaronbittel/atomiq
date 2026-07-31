@@ -7,6 +7,11 @@
         <title>Atomiq</title>
     </head>
     <body>
+        <div class="header">
+            {{if .Ws.ParentID}}
+            <a href="/workspaces/{{.Ws.ParentID}}">Parent Workspace</a>
+            {{end}}
+        </div>
         <div class="workspace">
             {{range $columnIdx, $column := .Ws.Columns}}
             <div class="column">

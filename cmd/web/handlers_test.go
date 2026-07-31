@@ -530,6 +530,35 @@ func TestWorkItemZoom(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("child workspace contains link to parent", func(t *testing.T) {
+		t.Chdir("../../")
+
+		item := model.NewWorkItem("Item")
+		wm := model.NewWorkspaceModel(
+			model.NewWorkspace(model.NewColumn("Column", item)),
+		)
+
+		app := newTestApplication(t, wm)
+		ts := newTestServer(t, app.routes())
+		defer ts.Close()
+
+		form := url.Values{}
+		form.Set("revision", "0")
+		resp := ts.postForm(t, fmt.Sprintf("/workspaces/%s/work-items/%s/zoom", wm.WorkspaceRootID(), item.ID()), form)
+
+		assertStatusCode(t, http.StatusSeeOther, resp.StatusCode)
+
+		loc := resp.Header.Get("Location")
+		if loc == "" {
+			t.Fatal("expected redirect location")
+		}
+
+		resp = ts.get(t, loc)
+
+		assertStatusCode(t, http.StatusOK, resp.StatusCode)
+		assertContains(t, resp.Body, fmt.Sprintf(`<a href="/workspaces/%s">Parent Workspace</a>`, wm.WorkspaceRootID()))
+	})
 }
 
 func TestHome(t *testing.T) {

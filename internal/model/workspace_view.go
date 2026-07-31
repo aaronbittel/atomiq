@@ -8,6 +8,8 @@ type WorkspaceView struct {
 	Revision uint64
 	// ID is the id of the active workspace.
 	ID WorkspaceID
+	// ParentID is the id of the parent workspace or nil if its the root.
+	ParentID *WorkspaceID
 }
 
 // ColumnView is the rendered representation of a workspace column.

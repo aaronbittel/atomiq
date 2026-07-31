@@ -2,6 +2,7 @@ package model_test
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 
 	"github.com/aaronbittel/atomiq/internal/model"
@@ -35,7 +36,101 @@ func TestWorkspaceView(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		want := workspaceView(wm.WorkspaceRootID(), 0, columnView("Column", viewA))
+		want := workspaceRootView(wm.WorkspaceRootID(), 0, columnView("Column", viewA))
+
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("workspace view mismatch (-want +got):\n%s", diff)
+		}
+	})
+
+	t.Run("view parent id is snapshot", func(t *testing.T) {
+		item := model.NewWorkItem("Item")
+		wm := model.NewWorkspaceModel(model.NewWorkspace(model.NewColumn("Column", item)))
+
+		childID, err := wm.WorkItemZoom(wm.WorkspaceRootID(), item.ID(), 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		view, err := wm.WorkspaceView(childID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if view.ParentID == nil {
+			t.Fatal("expected parent id")
+		}
+
+		*view.ParentID = "mutated"
+
+		got, err := wm.WorkspaceView(childID)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		want := workspaceChildView(childID, wm.WorkspaceRootID(), 0,
+			columnView("Backlog"),
+			columnView("In Progress"),
+			columnView("Done"),
+		)
+
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("workspace view mismatch (-want +got):\n%s", diff)
+		}
+	})
+
+	t.Run("child workspace has parentID", func(t *testing.T) {
+		item := model.NewWorkItem("Item")
+		wm := model.NewWorkspaceModel(model.NewWorkspace(model.NewColumn("Column", item)))
+
+		childID, err := wm.WorkItemZoom(wm.WorkspaceRootID(), item.ID(), 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		want := workspaceChildView(childID, wm.WorkspaceRootID(), 0,
+			columnView("Backlog"),
+			columnView("In Progress"),
+			columnView("Done"),
+		)
+		got, err := wm.WorkspaceView(childID)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("workspace view mismatch (-want +got):\n%s", diff)
+		}
+	})
+
+	t.Run("child of child", func(t *testing.T) {
+		item := model.NewWorkItem("Item")
+
+		wm := model.NewWorkspaceModel(model.NewWorkspace(model.NewColumn("Column", item)))
+
+		childID, err := wm.WorkItemZoom(wm.WorkspaceRootID(), item.ID(), 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		childItemID, err := wm.WorkItemAdd(childID, 0, 0, "Child Item")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		childChildID, err := wm.WorkItemZoom(childID, childItemID, 1)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		want := workspaceChildView(childChildID, childID, 0,
+			columnView("Backlog"),
+			columnView("In Progress"),
+			columnView("Done"),
+		)
+		got, err := wm.WorkspaceView(childChildID)
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		if diff := cmp.Diff(want, got); diff != "" {
 			t.Errorf("workspace view mismatch (-want +got):\n%s", diff)
@@ -52,7 +147,7 @@ func TestWorkItemAdd(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		want := workspaceView(wm.WorkspaceRootID(), 1,
+		want := workspaceRootView(wm.WorkspaceRootID(), 1,
 			columnView("Column", model.WorkItemView{
 				ID:   itemID,
 				Name: "New item",
@@ -87,7 +182,7 @@ func TestWorkItemDelete(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		want := workspaceView(wm.WorkspaceRootID(), 1, columnView("Column"))
+		want := workspaceRootView(wm.WorkspaceRootID(), 1, columnView("Column"))
 		got, err := wm.WorkspaceView(wm.WorkspaceRootID())
 		if err != nil {
 			t.Fatal(err)
@@ -118,7 +213,7 @@ func TestWorkItemMoveDirection(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		want := workspaceView(wm.WorkspaceRootID(), 1, columnView("Column", viewB, viewA))
+		want := workspaceRootView(wm.WorkspaceRootID(), 1, columnView("Column", viewB, viewA))
 		got, err := wm.WorkspaceView(wm.WorkspaceRootID())
 		if err != nil {
 			t.Fatal(err)
@@ -136,7 +231,7 @@ func TestWorkItemMoveDirection(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		want := workspaceView(wm.WorkspaceRootID(), 0, columnView("Column", model.WorkItemView{ID: itemA.ID(), Name: itemAName}))
+		want := workspaceRootView(wm.WorkspaceRootID(), 0, columnView("Column", model.WorkItemView{ID: itemA.ID(), Name: itemAName}))
 		got, err := wm.WorkspaceView(wm.WorkspaceRootID())
 		if err != nil {
 			t.Fatal(err)
@@ -155,7 +250,7 @@ func TestWorkItemMoveDirection(t *testing.T) {
 			t.Fatalf("expected err %v, got %v", wantErr, err)
 		}
 
-		want := workspaceView(wm.WorkspaceRootID(), 0, columnView("Column", viewA))
+		want := workspaceRootView(wm.WorkspaceRootID(), 0, columnView("Column", viewA))
 		got, err := wm.WorkspaceView(wm.WorkspaceRootID())
 		if err != nil {
 			t.Fatal(err)
@@ -179,7 +274,7 @@ func TestWorkItemMovePosition(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		want := workspaceView(wm.WorkspaceRootID(), 1, columnView("Column", viewB, viewA))
+		want := workspaceRootView(wm.WorkspaceRootID(), 1, columnView("Column", viewB, viewA))
 		got, err := wm.WorkspaceView(wm.WorkspaceRootID())
 		if err != nil {
 			t.Fatal(err)
@@ -201,7 +296,7 @@ func TestWorkItemMovePosition(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		want := workspaceView(wm.WorkspaceRootID(), 0, columnView("Column", viewA, viewB))
+		want := workspaceRootView(wm.WorkspaceRootID(), 0, columnView("Column", viewA, viewB))
 		got, err := wm.WorkspaceView(wm.WorkspaceRootID())
 		if err != nil {
 			t.Fatal(err)
@@ -223,7 +318,7 @@ func TestWorkItemMovePosition(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		want := workspaceView(wm.WorkspaceRootID(), 0, columnView("Column", viewA, viewB))
+		want := workspaceRootView(wm.WorkspaceRootID(), 0, columnView("Column", viewA, viewB))
 		got, err := wm.WorkspaceView(wm.WorkspaceRootID())
 		if err != nil {
 			t.Fatal(err)
@@ -247,7 +342,7 @@ func TestWorkItemMovePosition(t *testing.T) {
 			t.Fatalf("expected err %v, got %v", wantErr, err)
 		}
 
-		want := workspaceView(wm.WorkspaceRootID(), 0, columnView("Column", viewA, viewB))
+		want := workspaceRootView(wm.WorkspaceRootID(), 0, columnView("Column", viewA, viewB))
 		got, err := wm.WorkspaceView(wm.WorkspaceRootID())
 		if err != nil {
 			t.Fatal(err)
@@ -270,7 +365,7 @@ func TestWorkItemZoom(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		want := workspaceView(childID, 0,
+		want := workspaceChildView(childID, wm.WorkspaceRootID(), 0,
 			columnView("Backlog"),
 			columnView("In Progress"),
 			columnView("Done"),
@@ -351,7 +446,7 @@ func TestWorkItemZoom(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		wantRootView := workspaceView(wm.WorkspaceRootID(), 1, columnView("Backlog", model.WorkItemView{
+		wantRootView := workspaceRootView(wm.WorkspaceRootID(), 1, columnView("Backlog", model.WorkItemView{
 			ID:   itemA.ID(),
 			Name: itemAName,
 		}))
@@ -365,7 +460,7 @@ func TestWorkItemZoom(t *testing.T) {
 			t.Errorf("workspace view mismatch (-want +got):\n%s", diff)
 		}
 
-		wantChildView := workspaceView(childID, 1,
+		wantChildView := workspaceChildView(childID, wm.WorkspaceRootID(), 1,
 			columnView("Backlog", model.WorkItemView{
 				ID:   itemID,
 				Name: "New Child Item",
@@ -392,7 +487,7 @@ func TestSequentialMutationsUseLatestRevision(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	want := workspaceView(wm.WorkspaceRootID(), 1, columnView("Column", viewB, viewA))
+	want := workspaceRootView(wm.WorkspaceRootID(), 1, columnView("Column", viewB, viewA))
 	got, err := wm.WorkspaceView(wm.WorkspaceRootID())
 	if err != nil {
 		t.Fatal(err)
@@ -406,7 +501,7 @@ func TestSequentialMutationsUseLatestRevision(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	want = workspaceView(wm.WorkspaceRootID(), 2, columnView("Column", viewA))
+	want = workspaceRootView(wm.WorkspaceRootID(), 2, columnView("Column", viewA))
 	got, err = wm.WorkspaceView(wm.WorkspaceRootID())
 	if err != nil {
 		t.Fatal(err)
@@ -414,5 +509,25 @@ func TestSequentialMutationsUseLatestRevision(t *testing.T) {
 
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("workspace view mismatch (-want +got):\n%s", diff)
+	}
+}
+
+func TestWorkspaceViewHasNoUnexpectedReferenceFields(t *testing.T) {
+	viewType := reflect.TypeOf(model.WorkspaceView{})
+
+	allowedReferenceFields := map[string]bool{
+		"Columns":  true, // explicitly tested by "view returns snapshot"
+		"ParentID": true, // explicitly tested by "view parent id is snapshot"
+	}
+
+	for i := range viewType.NumField() {
+		field := viewType.Field(i)
+
+		switch field.Type.Kind() {
+		case reflect.Pointer, reflect.Slice, reflect.Map:
+			if !allowedReferenceFields[field.Name] {
+				t.Fatalf("WorkspaceView.%s is a reference field; add a snapshot test or allow it here", field.Name)
+			}
+		}
 	}
 }
