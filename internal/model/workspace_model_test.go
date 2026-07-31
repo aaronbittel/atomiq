@@ -62,20 +62,7 @@ func TestWorkspaceView(t *testing.T) {
 
 		*view.ParentID = "mutated"
 
-		got, err := wm.WorkspaceView(childID)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		want := workspaceChildView(childID, wm.WorkspaceRootID(), 0,
-			columnView("Backlog"),
-			columnView("In Progress"),
-			columnView("Done"),
-		)
-
-		if diff := cmp.Diff(want, got); diff != "" {
-			t.Errorf("workspace view mismatch (-want +got):\n%s", diff)
-		}
+		assertDefaultChildWorkspace(t, wm, childID, wm.WorkspaceRootID(), 0)
 	})
 
 	t.Run("child workspace has parentID", func(t *testing.T) {
@@ -87,19 +74,7 @@ func TestWorkspaceView(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		want := workspaceChildView(childID, wm.WorkspaceRootID(), 0,
-			columnView("Backlog"),
-			columnView("In Progress"),
-			columnView("Done"),
-		)
-		got, err := wm.WorkspaceView(childID)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if diff := cmp.Diff(want, got); diff != "" {
-			t.Errorf("workspace view mismatch (-want +got):\n%s", diff)
-		}
+		assertDefaultChildWorkspace(t, wm, childID, wm.WorkspaceRootID(), 0)
 	})
 
 	t.Run("child of child", func(t *testing.T) {
@@ -122,19 +97,7 @@ func TestWorkspaceView(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		want := workspaceChildView(childChildID, childID, 0,
-			columnView("Backlog"),
-			columnView("In Progress"),
-			columnView("Done"),
-		)
-		got, err := wm.WorkspaceView(childChildID)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if diff := cmp.Diff(want, got); diff != "" {
-			t.Errorf("workspace view mismatch (-want +got):\n%s", diff)
-		}
+		assertDefaultChildWorkspace(t, wm, childChildID, childID, 0)
 	})
 }
 
@@ -365,20 +328,7 @@ func TestWorkItemZoom(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		want := workspaceChildView(childID, wm.WorkspaceRootID(), 0,
-			columnView("Backlog"),
-			columnView("In Progress"),
-			columnView("Done"),
-		)
-
-		got, err := wm.WorkspaceView(childID)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if diff := cmp.Diff(want, got); diff != "" {
-			t.Errorf("workspace view mismatch (-want +got):\n%s", diff)
-		}
+		assertDefaultChildWorkspace(t, wm, childID, wm.WorkspaceRootID(), 0)
 	})
 
 	t.Run("returns the same child workspace id", func(t *testing.T) {
@@ -529,5 +479,22 @@ func TestWorkspaceViewHasNoUnexpectedReferenceFields(t *testing.T) {
 				t.Fatalf("WorkspaceView.%s is a reference field; add a snapshot test or allow it here", field.Name)
 			}
 		}
+	}
+}
+
+func assertDefaultChildWorkspace(t *testing.T, wm *model.WorkspaceModel, id, parentID model.WorkspaceID, revision uint64) {
+	want := workspaceChildView(id, parentID, revision,
+		columnView("Backlog"),
+		columnView("In Progress"),
+		columnView("Done"),
+	)
+
+	got, err := wm.WorkspaceView(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("default workspace view mismatch (-want +got):\n%s", diff)
 	}
 }
