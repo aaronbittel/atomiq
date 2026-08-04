@@ -180,6 +180,12 @@ func (wm *WorkspaceModel) WorkItemDelete(workspaceID WorkspaceID, expectedRevisi
 	})
 }
 
+func (wm *WorkspaceModel) WorkItemNameUpdate(workspaceID WorkspaceID, expectedRevision uint64, itemID WorkItemID, newName string) error {
+	return wm.mutate(workspaceID, expectedRevision, func(w *Workspace) (bool, error) {
+		return w.updateName(itemID, newName)
+	})
+}
+
 func (wm *WorkspaceModel) gatherChildWorkspaceSubtreeIDs(workItem WorkItem) []WorkspaceID {
 	if !workItem.hasChildWorkspace() {
 		panic("gatherChildWorkspaceSubtreeIDs(): work item has no child workspace")

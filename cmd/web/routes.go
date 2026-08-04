@@ -19,6 +19,8 @@ func (app *application) routes() http.Handler {
 	mux.HandleFunc("DELETE /workspaces/{workspaceID}/work-items/{id}", app.workItemDelete)
 	mux.HandleFunc("PATCH /workspaces/{workspaceID}/work-items/{id}/move", app.workItemMove)
 	mux.HandleFunc("POST /workspaces/{workspaceID}/work-items/{id}/zoom", app.workItemZoom)
+	mux.HandleFunc("GET /workspaces/{workspaceID}/work-items/{id}/edit", app.workItemEditView)
+	mux.HandleFunc("PATCH /workspaces/{workspaceID}/work-items/{id}/edit", app.workItemEdit)
 
 	return app.recoverPanic(app.methodOverride(app.logRequest(app.sessionManager.LoadAndSave(mux))))
 }

@@ -13,6 +13,7 @@ import (
 
 func init() {
 	gob.Register(&ColumnErr{})
+	gob.Register(model.WorkItemID(""))
 }
 
 type application struct {

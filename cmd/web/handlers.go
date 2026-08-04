@@ -24,8 +24,9 @@ var moveDirectionViews = []moveDirectionView{
 }
 
 type workspaceRenderView struct {
-	Ws        model.WorkspaceView
-	ColumnErr *ColumnErr
+	Ws         model.WorkspaceView
+	ColumnErr  *ColumnErr
+	EditItemID string
 
 	MoveDirections []moveDirectionView
 }
@@ -72,6 +73,7 @@ func (app *application) workspaceView(w http.ResponseWriter, r *http.Request) {
 	data := workspaceRenderView{
 		Ws:             workspaceView,
 		MoveDirections: moveDirectionViews,
+		EditItemID:     app.sessionManager.PopString(r.Context(), "editItemID"),
 	}
 
 	if columnErr, ok := app.sessionManager.Pop(r.Context(), "columnErr").(*ColumnErr); ok {
@@ -262,6 +264,72 @@ func (app *application) workItemZoom(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, fmt.Sprintf("/workspaces/%s", childID), http.StatusSeeOther)
+}
+
+func (app *application) workItemEditView(w http.ResponseWriter, r *http.Request) {
+	workspaceID, err := model.ParseWorkspaceID(r.PathValue("workspaceID"))
+	if err != nil {
+		app.clientError(w, http.StatusUnprocessableEntity)
+		return
+	}
+
+	itemID, err := model.ParseWorkItemID(r.PathValue("id"))
+	if err != nil {
+		app.clientError(w, http.StatusUnprocessableEntity)
+		return
+	}
+
+	app.sessionManager.Put(r.Context(), "editItemID", itemID.String())
+
+	http.Redirect(w, r, fmt.Sprintf("/workspaces/%s", workspaceID), http.StatusSeeOther)
+}
+
+func (app *application) workItemEdit(w http.ResponseWriter, r *http.Request) {
+	workspaceID, err := model.ParseWorkspaceID(r.PathValue("workspaceID"))
+	if err != nil {
+		app.clientError(w, http.StatusUnprocessableEntity)
+		return
+	}
+
+	itemID, err := model.ParseWorkItemID(r.PathValue("id"))
+	if err != nil {
+		app.clientError(w, http.StatusUnprocessableEntity)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		app.clientError(w, http.StatusUnprocessableEntity)
+		return
+	}
+
+	revision, err := strconv.ParseUint(r.PostForm.Get("revision"), 10, 64)
+	if err != nil {
+		app.clientError(w, http.StatusUnprocessableEntity)
+		return
+	}
+
+	newName := r.PostForm.Get("newName")
+	if newName == "" {
+		app.clientError(w, http.StatusUnprocessableEntity)
+		return
+	}
+
+	if err := app.workspaceModel.WorkItemNameUpdate(workspaceID, revision, itemID, newName); err != nil {
+		switch {
+		case errors.Is(err, model.ErrWorkItemNotFound),
+			errors.Is(err, model.ErrWorkspaceNotFound):
+			app.clientError(w, http.StatusNotFound)
+		case errors.Is(err, model.ErrRevisionConflict):
+			app.clientError(w, http.StatusConflict)
+		case errors.Is(err, model.ErrInvalidWorkItemName):
+			app.clientError(w, http.StatusUnprocessableEntity)
+		default:
+			app.serverError(w, r, err)
+		}
+		return
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/workspaces/%s", workspaceID), http.StatusSeeOther)
 }
 
 func healthz(w http.ResponseWriter, r *http.Request) {

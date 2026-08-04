@@ -36,7 +36,7 @@ html, body {
 
 .column {
     padding: 1rem;
-    border: 1px solid #CCC;
+    border: 2px solid #CCC;
     border-radius: 0.5rem;
 }
 
@@ -48,16 +48,45 @@ html, body {
     display: flex;
 }
 
-.work-item-box button {
+.red-border button {
     border: 1px solid #C0392B;
 }
 
-.work-item {
-    position: relative;
-    overflow: visible;
+.gray-border button {
+    border: 2px solid #CCC;
+}
 
+.gray-border-box {
+    border: 2px solid #CCC;
+}
+
+.work-item {
+    display: flex;
     flex: 1;
     min-width: 0;
+}
+
+.work-item-show {
+    position: relative;
+    overflow: visible;
+    flex: 1;
+    min-width: 0;
+}
+
+.work-item-edit {
+    flex: 1;
+    min-width: 0;
+}
+
+.work-item-edit form {
+    display: flex;
+    width: 100%;
+}
+
+.work-item-edit input[type="text"] {
+    flex: 1;
+    min-width: 0;
+    border: 2px dotted red;
 }
 
 .addWorkItem form {

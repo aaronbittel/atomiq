@@ -19,36 +19,69 @@
                 <h2>{{.Name}}</h2>
                 {{range $itemIdx, $item := .WorkItems}}
                 <div class="work-item-box">
-                    <form action="/workspaces/{{$.Ws.ID}}/work-items/{{$item.ID}}/zoom" method="post">
-                        <input type="hidden" name="revision" value="{{$.Ws.Revision}}">
-                        <button type="submit" class="bordered-box">O</button>
-                    </form>
-                    <div class="work-item bordered-box">
-                        <p>{{$item.Name}}</p>
-                        {{range $.MoveDirections}}
-                        <form action="/workspaces/{{$.Ws.ID}}/work-items/{{$item.ID}}/move" method="post">
-                            <input type="hidden" name="_method" value="PATCH">
-                            <input type="hidden" name="direction" value="{{.Value}}">
+                    <div class="gray-border">
+                        <form action="/workspaces/{{$.Ws.ID}}/work-items/{{$item.ID}}/zoom" method="post">
                             <input type="hidden" name="revision" value="{{$.Ws.Revision}}">
-                            <button type="submit" class="arrow arrow-{{.Value}}" aria-label="Move {{.Value}}">{{.Symbol}}</button>
+                            <button type="submit" class="bordered-box">Z</button>
                         </form>
+                    </div>
+                    <div class="work-item">
+                        {{if eq $.EditItemID $item.ID}}
+                        <div class="work-item-edit">
+                            <form action="/workspaces/{{$.Ws.ID}}/work-items/{{$item.ID}}/edit" method="post">
+                                <input type="hidden" name="_method" value="PATCH">
+                                <input type="hidden" name="revision" value="{{$.Ws.Revision}}">
+                                <input type="text"
+                                       name="newName"
+                                       class="bordered-box"
+                                       value="{{$item.Name}}"
+                                       required
+                                       minlength="1"
+                                       placeholder="edit {{$item.Name}}"
+                                       oninvalid="this.setCustomValidity('work item must not be blank')"
+                                       oninput="this.setCustomValidity('')">
+                            </form>
+                        </div>
+                        {{else}}
+                        <div class="work-item-show bordered-box">
+                            <p>{{$item.Name}}</p>
+                            {{range $.MoveDirections}}
+                            <form action="/workspaces/{{$.Ws.ID}}/work-items/{{$item.ID}}/move" method="post">
+                                <input type="hidden" name="_method" value="PATCH">
+                                <input type="hidden" name="direction" value="{{.Value}}">
+                                <input type="hidden" name="revision" value="{{$.Ws.Revision}}">
+                                <button type="submit" class="arrow arrow-{{.Value}}" aria-label="Move {{.Value}}">{{.Symbol}}</button>
+                            </form>
+                            {{end}}
+                        </div>
                         {{end}}
                     </div>
-                    <form action="/workspaces/{{$.Ws.ID}}/work-items/{{$item.ID}}" method="post">
-                        <input type="hidden" name="_method" value="DELETE">
-                        <input type="hidden" name="revision" value="{{$.Ws.Revision}}">
-                        <button type="submit" class="error bordered-box">X</button>
-                    </form>
+                    <div class="gray-border">
+                        <form action="/workspaces/{{$.Ws.ID}}/work-items/{{$item.ID}}/edit" method="get">
+                            <button type="submit" class="bordered-box">E</button>
+                        </form>
+                    </div>
+                    <div class="red-border">
+                        <form action="/workspaces/{{$.Ws.ID}}/work-items/{{$item.ID}}" method="post">
+                            <input type="hidden" name="_method" value="DELETE">
+                            <input type="hidden" name="revision" value="{{$.Ws.Revision}}">
+                            <button type="submit" class="error bordered-box">X</button>
+                        </form>
+                    </div>
                 </div>
                 {{end}}
-                <div class="addWorkItem">
+                <div class="addWorkItem gray-border">
                     <form action="/workspaces/{{$.Ws.ID}}/work-items" method="post">
                         <input type="hidden" name="columnIdx" value="{{$columnIdx}}">
                         <input type="hidden" name="revision" value="{{$.Ws.Revision}}">
-                        <input type="text" name="name" class="bordered-box" required minlength="1" placeholder="add new item"
-                            oninvalid="this.setCustomValidity('work item must not be blank')"
-                            oninput="this.setCustomValidity('')"
-                            >
+                        <input type="text"
+                               name="name"
+                               class="bordered-box"
+                               required
+                               minlength="1"
+                               placeholder="add new item"
+                               oninvalid="this.setCustomValidity('work item must not be blank')"
+                               oninput="this.setCustomValidity('')">
                         <button type="submit" class="bordered-box">+</button>
                     </form>
                 </div>

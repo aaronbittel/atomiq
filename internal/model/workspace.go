@@ -126,6 +126,26 @@ func (ws *Workspace) moveToPosition(id WorkItemID, insertPoint WorkItemInsertion
 	return true, nil
 }
 
+func (ws *Workspace) updateName(id WorkItemID, newName string) (updated bool, err error) {
+	newName = strings.TrimSpace(newName)
+	if newName == "" {
+		return false, ErrInvalidWorkItemName
+	}
+
+	pos, err := ws.findWorkItemPosition(id)
+	if err != nil {
+		return false, err
+	}
+
+	item := &ws.columns[pos.ColumnIdx].workItems[pos.ItemIdx]
+	if (*item).name == newName {
+		return false, nil
+	}
+
+	(*item).name = newName
+	return true, nil
+}
+
 func (ws *Workspace) childWorkspaceIDs() []WorkspaceID {
 	ids := []WorkspaceID{}
 

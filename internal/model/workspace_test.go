@@ -491,6 +491,98 @@ func TestFindWorkItemPosition(t *testing.T) {
 	}
 }
 
+func TestUpdateName(t *testing.T) {
+	tests := []struct {
+		name        string
+		itemID      WorkItemID
+		newName     string
+		wantName    string
+		wantUpdated bool
+		wantErr     error
+	}{
+		{
+			name:        "successful update",
+			itemID:      A.id,
+			newName:     "name updated",
+			wantName:    "name updated",
+			wantUpdated: true,
+		},
+		{
+			name:        "same name",
+			itemID:      A.id,
+			newName:     "name",
+			wantName:    "name",
+			wantUpdated: false,
+		},
+		{
+			name:        "blank name",
+			itemID:      A.id,
+			newName:     "    ",
+			wantUpdated: false,
+			wantErr:     ErrInvalidWorkItemName,
+		},
+		{
+			name:        "empty name",
+			itemID:      A.id,
+			newName:     "",
+			wantUpdated: false,
+			wantErr:     ErrInvalidWorkItemName,
+		},
+		{
+			name:        "trim whitespace",
+			itemID:      A.id,
+			newName:     "  new name     ",
+			wantName:    "new name",
+			wantUpdated: true,
+		},
+		{
+			name:        "same name after trim",
+			itemID:      A.id,
+			newName:     "  name     ",
+			wantName:    "name",
+			wantUpdated: false,
+		},
+		{
+			name:        "item not found",
+			itemID:      B.id,
+			newName:     "new name",
+			wantUpdated: false,
+			wantErr:     ErrWorkItemNotFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ws := workspaceWithID(testWorkspaceID,
+				column("Column", item(A.id, "name")),
+			)
+
+			gotUpdated, gotErr := ws.updateName(tt.itemID, tt.newName)
+
+			if !errors.Is(gotErr, tt.wantErr) {
+				t.Fatalf("expected error %v, got %v", tt.wantErr, gotErr)
+			}
+
+			if tt.wantErr != nil {
+				return
+			}
+
+			if tt.wantUpdated != gotUpdated {
+				t.Fatalf("expected updated to be %t, got %t", tt.wantUpdated, gotUpdated)
+			}
+
+			item, err := ws.findWorkItem(A.id)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if tt.wantName != item.name {
+				t.Fatalf("expected name %q, got %q", tt.wantName, item.name)
+			}
+		})
+	}
+}
+
 func assertWorkspaceEqual(t *testing.T, want, got Workspace) {
 	t.Helper()
 

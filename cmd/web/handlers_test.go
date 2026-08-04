@@ -594,6 +594,144 @@ func TestWorkItemZoom(t *testing.T) {
 	})
 }
 
+func TestWorkItemNameUpdate(t *testing.T) {
+	t.Run("valid update", func(t *testing.T) {
+		t.Chdir("../../")
+
+		const (
+			oldName = "Old Name"
+			newName = "New Name"
+		)
+
+		var itemA = model.NewWorkItem(oldName)
+
+		wm := model.NewWorkspaceModel(model.NewWorkspace(
+			model.NewColumn("Backlog", itemA),
+		))
+
+		app := newTestApplication(t, wm)
+		ts := newTestServer(t, app.routes())
+		defer ts.Close()
+
+		url := workItemNameUpdateURL(wm.WorkspaceRootID(), itemA.ID())
+		form := workItemNameUpdateForm(newName, 0)
+		resp := ts.postForm(t, url, form)
+
+		wantLocation := workspacesViewURL(wm.WorkspaceRootID())
+		assertRedirect(t, resp, http.StatusSeeOther, wantLocation)
+
+		want := model.WorkspaceView{
+			ID:       wm.WorkspaceRootID(),
+			Title:    "Root Workspace",
+			Revision: 1,
+			Columns: []model.ColumnView{
+				{
+					Name: "Backlog",
+					WorkItems: []model.WorkItemView{
+						{ID: itemA.ID(), Name: newName},
+					},
+				},
+			},
+		}
+
+		got, err := wm.WorkspaceView(wm.WorkspaceRootID())
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("workspace view mismatch (-want +got):\n%s", diff)
+		}
+
+		resp = ts.get(t, wantLocation)
+
+		assertStatusCode(t, http.StatusOK, resp.StatusCode)
+		assertContains(t, resp.Body, `name="revision" value="1"`)
+		assertContains(t, resp.Body, newName)
+		assertNotContains(t, resp.Body, oldName)
+	})
+
+	t.Run("client error", func(t *testing.T) {
+		t.Chdir("../../")
+
+		tests := []struct {
+			name       string
+			mutateURL  func(*model.WorkspaceModel, model.WorkItem) string
+			mutateForm func(from url.Values)
+			wantCode   int
+		}{
+			{
+				name: "invalid name",
+				mutateForm: func(form url.Values) {
+					form.Set("newName", "   ")
+				},
+				wantCode: http.StatusUnprocessableEntity,
+			},
+			{
+				name: "revision not a number",
+				mutateForm: func(form url.Values) {
+					form.Set("revision", "invalid")
+				},
+				wantCode: http.StatusUnprocessableEntity,
+			},
+			{
+				name: "revision conflict",
+				mutateForm: func(form url.Values) {
+					form.Set("revision", "1")
+				},
+				wantCode: http.StatusConflict,
+			},
+			{
+				name: "invalid id format",
+				mutateURL: func(wm *model.WorkspaceModel, item model.WorkItem) string {
+					t.Helper()
+					return fmt.Sprintf("/workspaces/%s/work-items/invalid-format/edit", wm.WorkspaceRootID())
+				},
+				wantCode: http.StatusUnprocessableEntity,
+			},
+			{
+				name: "item not found",
+				mutateURL: func(wm *model.WorkspaceModel, item model.WorkItem) string {
+					return workItemNameUpdateURL(wm.WorkspaceRootID(), newUnknownWorkItemID(item.ID()))
+				},
+				wantCode: http.StatusNotFound,
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				item := model.NewWorkItem("Item")
+				wm := model.NewWorkspaceModel(
+					model.NewWorkspace(model.NewColumn("Backlog", item)),
+				)
+
+				app := newTestApplication(t, wm)
+				ts := newTestServer(t, app.routes())
+				defer ts.Close()
+
+				url := workItemNameUpdateURL(wm.WorkspaceRootID(), item.ID())
+				if tt.mutateURL != nil {
+					url = tt.mutateURL(wm, item)
+				}
+
+				form := workItemNameUpdateForm("new name", 0)
+				if tt.mutateForm != nil {
+					tt.mutateForm(form)
+				}
+
+				resp := ts.postForm(t, url, form)
+
+				assertStatusCode(t, tt.wantCode, resp.StatusCode)
+
+				resp = ts.get(t, workspacesViewURL(wm.WorkspaceRootID()))
+
+				assertStatusCode(t, http.StatusOK, resp.StatusCode)
+				assertContains(t, resp.Body, `name="revision" value="0"`)
+			})
+		}
+	})
+}
+
 func TestHome(t *testing.T) {
 	t.Run("redirects to workspace root", func(t *testing.T) {
 		wm := model.NewWorkspaceModel(model.NewWorkspace())
@@ -746,6 +884,18 @@ func workItemMoveForm(direction model.MoveDirection, revision uint64) url.Values
 	form.Set("_method", "PATCH")
 	form.Set("revision", strconv.FormatUint(revision, 10))
 	form.Set("direction", string(direction))
+	return form
+}
+
+func workItemNameUpdateURL(workspaceID model.WorkspaceID, itemID model.WorkItemID) string {
+	return fmt.Sprintf("/workspaces/%s/work-items/%s/edit", workspaceID, itemID)
+}
+
+func workItemNameUpdateForm(direction string, revision uint64) url.Values {
+	form := url.Values{}
+	form.Set("_method", "PATCH")
+	form.Set("revision", strconv.FormatUint(revision, 10))
+	form.Set("newName", direction)
 	return form
 }
 
