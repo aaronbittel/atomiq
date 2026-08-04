@@ -23,7 +23,7 @@ type application struct {
 }
 
 func main() {
-	port := flag.String("port", ":3888", "web port")
+	addr := flag.String("addr", ":3888", "web addr")
 	flag.Parse()
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -53,9 +53,9 @@ func main() {
 		logger:         logger,
 	}
 
-	logger.Info("server starting", "port", *port)
+	logger.Info("server starting", "addr", *addr)
 
-	err := http.ListenAndServe(*port, app.routes())
+	err := http.ListenAndServe(*addr, app.routes())
 	logger.Error("server error", "err", err)
 	os.Exit(1)
 }
